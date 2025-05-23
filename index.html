@@ -721,7 +721,7 @@
         <div class="booster-panel">
             <div class="tab-container">
                 <button class="tab active" id="buyTab">⛏️ Buy</button>
-                <button class="tab" id="resourcesTab">📦 Resources</button>
+                <button class="tab" id="sellTab">💰 Sell</button>
             </div>
             
             <div id="tabContent">
@@ -969,17 +969,17 @@
             const cellInfo = document.getElementById('cellInfo');
             
             if (gameState.mode === 'deploy' && gameState.selectedExpedition) {
-                cellInfo.textContent = `Click an owned cell to deploy ${gameState.selectedExpedition} expedition`;
+                cellInfo.textContent = `Deploy ${gameState.selectedExpedition} • Right-click or ESC to deselect`;
                 return;
             }
             
             if (gameState.mode === 'booster' && gameState.selectedBooster) {
-                cellInfo.textContent = `Click a cell to apply ${gameState.selectedBooster}`;
+                cellInfo.textContent = `Apply ${gameState.selectedBooster} • Right-click or ESC to deselect`;
                 return;
             }
             
             // Default message
-            cellInfo.textContent = 'Buy expeditions, then deploy from Resources tab';
+            cellInfo.textContent = 'Buy expeditions, then deploy from Deployment Center';
         }
 
         // Buy cell
@@ -1059,11 +1059,20 @@
             cell.extractionEndTime = Date.now() + extractionTime;
             cell.isReady = false;
             
-            // Reset mode and selection
-            gameState.mode = 'select';
-            gameState.selectedExpedition = null;
+            // Keep the selection active (don't reset mode and selection)
+            // gameState.mode = 'select';  // Commented out to keep selection active
+            // gameState.selectedExpedition = null;  // Commented out to keep selection active
             
-            showNotification(`Deployed ${cell.resourceType} expedition!`, 'success');
+            const remaining = gameState.expeditions[gameState.selectedExpedition];
+            if (remaining === 0) {
+                showNotification(`Deployed last ${cell.resourceType} expedition! Buy more to continue.`, 'warning');
+                // Auto-deselect when no more expeditions available
+                gameState.selectedExpedition = null;
+                gameState.mode = 'select';
+            } else {
+                showNotification(`Deployed ${cell.resourceType} expedition! (${remaining} remaining)`, 'success');
+            }
+            
             updateUI();
             saveGameState();
         }
@@ -1345,7 +1354,7 @@
                     tabContent.appendChild(item);
                 });
                 
-            } else if (gameState.activeTab === 'resources') {
+            } else if (gameState.activeTab === 'sell') {
                 // Show collected resources inventory with sell functionality
                 tabContent.innerHTML = '<div class="panel-title">Collected Resources</div>';
                 
@@ -1415,10 +1424,10 @@
                 updateUI();
             };
             
-            document.getElementById('resourcesTab').onclick = () => {
-                gameState.activeTab = 'resources';
+            document.getElementById('sellTab').onclick = () => {
+                gameState.activeTab = 'sell';
                 document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-                document.getElementById('resourcesTab').classList.add('active');
+                document.getElementById('sellTab').classList.add('active');
                 updateUI();
             };
             
@@ -1428,6 +1437,33 @@
             // Initialize debug display
             document.getElementById('speedDisplay').textContent = `${gameState.debugSpeed}x`;
             document.getElementById('speedSlider').value = gameState.debugSpeed;
+            
+            // Right-click anywhere to deselect
+            document.addEventListener('contextmenu', function(e) {
+                if (gameState.selectedExpedition || gameState.selectedBooster) {
+                    e.preventDefault();
+                    deselectAll();
+                }
+            });
+            
+            // ESC key to deselect
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    deselectAll();
+                }
+            });
+        }
+        
+        // Deselect all selections
+        function deselectAll() {
+            if (gameState.selectedExpedition || gameState.selectedBooster) {
+                const wasSelected = gameState.selectedExpedition || gameState.selectedBooster;
+                gameState.selectedExpedition = null;
+                gameState.selectedBooster = null;
+                gameState.mode = 'select';
+                showNotification(`Deselected ${wasSelected}.`, 'info');
+                updateUI();
+            }
         }
 
         // Game loop
@@ -1613,11 +1649,18 @@
                 return;
             }
             
-            gameState.selectedBooster = boosterName;
-            gameState.selectedExpedition = null;
-            gameState.mode = 'booster';
+            // Toggle selection if clicking the same booster
+            if (gameState.selectedBooster === boosterName) {
+                gameState.selectedBooster = null;
+                gameState.mode = 'select';
+                showNotification(`Deselected ${boosterName}.`, 'info');
+            } else {
+                gameState.selectedBooster = boosterName;
+                gameState.selectedExpedition = null;
+                gameState.mode = 'booster';
+                showNotification(`Selected ${boosterName}. Click cells to apply booster!`, 'success');
+            }
             
-            showNotification(`Selected ${boosterName}. Now click a cell to apply booster!`, 'success');
             updateUI();
         }
 
@@ -1654,11 +1697,18 @@
                 return;
             }
             
-            gameState.selectedExpedition = resourceType;
-            gameState.selectedBooster = null;
-            gameState.mode = 'deploy';
+            // Toggle selection if clicking the same resource
+            if (gameState.selectedExpedition === resourceType) {
+                gameState.selectedExpedition = null;
+                gameState.mode = 'select';
+                showNotification(`Deselected ${resourceType} expedition.`, 'info');
+            } else {
+                gameState.selectedExpedition = resourceType;
+                gameState.selectedBooster = null;
+                gameState.mode = 'deploy';
+                showNotification(`Selected ${resourceType} expedition. Click cells to deploy!`, 'success');
+            }
             
-            showNotification(`Selected ${resourceType} expedition. Now click a cell to deploy!`, 'success');
             updateUI();
         }
 
