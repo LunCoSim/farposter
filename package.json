@@ -1,0 +1,26 @@
+{
+  "name": "farpost-game",
+  "version": "1.0.0",
+  "description": "Lunar mining game with Farcaster integration",
+  "main": "index.html",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "echo 'Static site - no build needed'",
+    "deploy": "netlify deploy --prod"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "keywords": [
+    "game",
+    "farcaster",
+    "lunar",
+    "mining",
+    "web3"
+  ],
+  "author": "",
+  "license": "MIT"
+} 
