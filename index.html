@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌙 Farpost</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #333;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .player-info {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 60px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .game-title h1 {
+            font-size: 20px;
+            color: #4CAF50;
+            text-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: calc(100vh - 140px);
+        }
+
+        /* Map Container */
+        .map-container {
+            background: rgba(42, 42, 42, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #444;
+        }
+
+        .map-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .map-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .cell-info {
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        /* Hexagonal Grid */
+        .hex-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            justify-items: center;
+            margin: 20px 0;
+        }
+
+        .hex-cell {
+            width: 60px;
+            height: 52px;
+            background: #3a3a3a;
+            border: 2px solid #555;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            font-size: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .hex-cell:hover {
+            background: #4a4a4a;
+            border-color: #666;
+            transform: scale(1.05);
+        }
+
+        .hex-cell.owned {
+            background: #2a4a2a;
+            border-color: #4CAF50;
+        }
+
+        .hex-cell.extracting {
+            background: #4a4a2a;
+            border-color: #FFC107;
+            animation: pulse 2s infinite;
+        }
+
+        .hex-cell.available {
+            background: #2a2a4a;
+            border-color: #2196F3;
+        }
+
+        .hex-cell.selected {
+            border-color: #FF5722;
+            box-shadow: 0 0 15px rgba(255, 87, 34, 0.5);
+        }
+
+        .hex-cell.ready {
+            background: #2a5a2a;
+            border-color: #4CAF50;
+            animation: glow 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(76, 175, 80, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(76, 175, 80, 0.8); }
+        }
+
+        /* Timer overlay */
+        .timer {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 8px;
+            color: #FFC107;
+            white-space: nowrap;
+        }
+
+        /* Resource Panel */
+        .resource-panel {
+            background: rgba(42, 42, 42, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #444;
+        }
+
+        .panel-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .resource-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(58, 58, 58, 0.8);
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .resource-item:hover {
+            background: rgba(68, 68, 68, 0.8);
+            transform: translateX(2px);
+        }
+
+        .resource-item.selected {
+            background: rgba(76, 175, 80, 0.2);
+            border-left-color: #8BC34A;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+
+        .resource-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .resource-name {
+            font-size: 14px;
+        }
+
+        .resource-amount {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .resource-value {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .resource-cost {
+            font-size: 12px;
+            color: #FF9800;
+            font-weight: bold;
+        }
+
+        /* Booster & Market Panel */
+        .booster-panel {
+            background: rgba(42, 42, 42, 0.9);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid #444;
+            display: flex;
+            flex-direction: column;
+            max-height: 500px;
+        }
+
+        .tab-container {
+            display: flex;
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+
+        #tabContent {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        /* Custom scrollbar */
+        #tabContent::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #tabContent::-webkit-scrollbar-track {
+            background: rgba(42, 42, 42, 0.5);
+            border-radius: 4px;
+        }
+
+        #tabContent::-webkit-scrollbar-thumb {
+            background: rgba(76, 175, 80, 0.7);
+            border-radius: 4px;
+        }
+
+        #tabContent::-webkit-scrollbar-thumb:hover {
+            background: rgba(76, 175, 80, 0.9);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            background: #3a3a3a;
+            border: none;
+            color: #aaa;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 12px;
+        }
+
+        .tab.active {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .tab:first-child {
+            border-radius: 8px 0 0 8px;
+        }
+
+        .tab:last-child {
+            border-radius: 0 8px 8px 0;
+        }
+
+        .booster-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin: 8px 0;
+            background: rgba(58, 58, 58, 0.8);
+            border-radius: 8px;
+            border-left: 4px solid #FF9800;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .booster-item:hover {
+            background: rgba(68, 68, 68, 0.8);
+        }
+
+        .booster-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .booster-item.selected {
+            background: rgba(255, 152, 0, 0.2);
+            border-left-color: #FFB74D;
+            box-shadow: 0 0 10px rgba(255, 152, 0, 0.3);
+        }
+
+        .booster-info {
+            flex: 1;
+        }
+
+        .booster-name {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .booster-effect {
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .booster-cost {
+            color: #FF9800;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        /* Action Bar */
+        .action-bar {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            border-top: 2px solid #333;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 12px 20px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            min-width: 120px;
+            justify-content: center;
+        }
+
+        .action-btn:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .action-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .action-btn.secondary {
+            background: #2196F3;
+        }
+
+        .action-btn.secondary:hover {
+            background: #1976D2;
+        }
+
+        .action-btn.danger {
+            background: #f44336;
+        }
+
+        .action-btn.danger:hover {
+            background: #d32f2f;
+        }
+
+        /* Progress indicators */
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s;
+        }
+
+        /* Tooltips */
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 120%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 1200px) {
+            .main-container {
+                grid-template-columns: 1fr 1fr;
+                gap: 15px;
+            }
+            
+            .booster-panel {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 10px 15px;
+            }
+            
+            .player-info {
+                gap: 15px;
+            }
+            
+            .stat {
+                min-width: 50px;
+            }
+            
+            .stat-value {
+                font-size: 14px;
+            }
+            
+            .game-title h1 {
+                font-size: 18px;
+            }
+            
+            .main-container {
+                grid-template-columns: 1fr;
+                gap: 15px;
+                padding: 15px;
+            }
+            
+            .hex-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 6px;
+            }
+            
+            .hex-cell {
+                width: 50px;
+                height: 44px;
+                font-size: 9px;
+            }
+            
+            .action-bar {
+                padding: 10px 15px;
+                gap: 8px;
+            }
+            
+            .action-btn {
+                padding: 10px 16px;
+                font-size: 12px;
+                min-width: 100px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hex-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .hex-cell {
+                width: 45px;
+                height: 40px;
+                font-size: 8px;
+            }
+            
+            .action-btn {
+                min-width: 90px;
+                padding: 8px 12px;
+            }
+        }
+
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background: rgba(244, 67, 54, 0.9);
+        }
+
+        .notification.warning {
+            background: rgba(255, 193, 7, 0.9);
+            color: #333;
+        }
+
+        /* Loading overlay */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .loading.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #333;
+            border-top: 4px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Debug Panel */
+        .debug-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 8px;
+            color: white;
+            font-size: 12px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .debug-panel div {
+            margin-bottom: 10px;
+        }
+
+        .debug-panel label {
+            font-weight: bold;
+        }
+
+        .debug-panel input[type="range"] {
+            width: 100px;
+        }
+
+        .debug-panel button {
+            padding: 5px 10px;
+            background: #f44336;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Debug Panel -->
+    <div class="debug-panel" id="debugPanel" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 8px; color: white; font-size: 12px; z-index: 1000; display: none;">
+        <div style="margin-bottom: 10px; font-weight: bold;">🔧 Debug Panel</div>
+        <div style="margin-bottom: 5px;">
+            <label>Speed Multiplier: <span id="speedDisplay">1x</span></label>
+        </div>
+        <div style="margin-bottom: 10px;">
+            <input type="range" id="speedSlider" min="1" max="120" value="1" style="width: 100px;">
+        </div>
+        <button onclick="toggleDebug()" style="padding: 5px 10px; background: #f44336; border: none; border-radius: 4px; color: white; cursor: pointer;">Hide</button>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="player-info">
+            <div class="stat">
+                <div class="stat-label">Level</div>
+                <div class="stat-value" id="level">1</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">XP</div>
+                <div class="stat-value" id="xp">0 / 1000</div>
+                <div class="progress-bar">
+                    <div class="progress" id="xp-progress" style="width: 0%;"></div>
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Points</div>
+                <div class="stat-value" id="points">1000</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Cells</div>
+                <div class="stat-value" id="cells">3 / 3</div>
+            </div>
+        </div>
+        <div class="game-title">
+            <h1>🌙 Farpost</h1>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Map Container -->
+        <div class="map-container">
+            <div class="map-header">
+                <div class="map-title">Lunar Territory</div>
+                <div class="cell-info" id="cellInfo">Select a cell to manage</div>
+            </div>
+            
+            <!-- Hexagonal Grid -->
+            <div class="hex-grid" id="hexGrid">
+                <!-- Cells will be dynamically generated -->
+            </div>
+        </div>
+
+        <!-- Resource Panel -->
+        <div class="resource-panel">
+            <div class="panel-title">🚀 Deployment Center</div>
+            <div id="resourceList">
+                <!-- Expeditions and boosters will be dynamically generated -->
+            </div>
+        </div>
+
+        <!-- Booster & Market Panel -->
+        <div class="booster-panel">
+            <div class="tab-container">
+                <button class="tab active" id="buyTab">⛏️ Buy</button>
+                <button class="tab" id="resourcesTab">📦 Resources</button>
+            </div>
+            
+            <div id="tabContent">
+                <!-- Tab content will be dynamically generated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <button class="action-btn secondary" id="buyCell">
+            🏪 Buy Cell (500 pts)
+        </button>
+        <button class="action-btn danger" id="sellResources">
+            💰 Sell All Resources
+        </button>
+        <button class="action-btn secondary" id="cancelSelection" style="display: none;">
+            ❌ Cancel Selection
+        </button>
+    </div>
+
+    <script>
+        // Game state
+        let gameState = {
+            level: 1,
+            xp: 0,
+            points: 1000,
+            ownedCells: 3,
+            maxCells: 3,
+            selectedCell: null,
+            selectedExpedition: null,
+            selectedBooster: null,
+            activeBooster: null,
+            boosterEndTime: null,
+            resources: {
+                'Lunar Regolith': 0,
+                'Iron Ore': 0,
+                'Aluminum': 0,
+                'Water Ice': 0,
+                'Magnesium': 0,
+                'Silicon': 0,
+                'Titanium': 0,
+                'Rare Earth Elements': 0,
+                'Platinum Group Metals': 0,
+                'Helium-3': 0
+            },
+            expeditions: {
+                'Lunar Regolith': 0,
+                'Iron Ore': 0,
+                'Aluminum': 0,
+                'Water Ice': 0,
+                'Magnesium': 0,
+                'Silicon': 0,
+                'Titanium': 0,
+                'Rare Earth Elements': 0,
+                'Platinum Group Metals': 0,
+                'Helium-3': 0
+            },
+            boosters: {
+                'Basic Booster': 0,
+                'Advanced Booster': 0,
+                'Elite Booster': 0,
+                'Master Booster': 0,
+                'Ultimate Booster': 0
+            },
+            cells: Array(18).fill(null).map((_, index) => ({
+                id: index,
+                owned: index < 3,
+                resourceType: null,
+                extractionStartTime: null,
+                extractionEndTime: null,
+                isReady: false
+            })),
+            activeTab: 'expeditions',
+            mode: 'select', // 'select', 'deploy', 'booster'
+            debugSpeed: 1
+        };
+
+        // Game configuration
+        const gameConfig = {
+            resources: {
+                'Lunar Regolith': { time: 0.5, cost: 20, value: 50, xp: 10, level: 1, symbol: 'LR' },
+                'Iron Ore': { time: 1, cost: 30, value: 100, xp: 15, level: 1, symbol: 'Fe' },
+                'Aluminum': { time: 2, cost: 35, value: 150, xp: 18, level: 1, symbol: 'Al' },
+                'Water Ice': { time: 4, cost: 40, value: 200, xp: 20, level: 1, symbol: 'H2O' },
+                'Magnesium': { time: 6, cost: 45, value: 180, xp: 22, level: 5, symbol: 'Mg' },
+                'Silicon': { time: 8, cost: 50, value: 250, xp: 25, level: 5, symbol: 'Si' },
+                'Titanium': { time: 12, cost: 80, value: 500, xp: 40, level: 5, symbol: 'Ti' },
+                'Rare Earth Elements': { time: 16, cost: 150, value: 1500, xp: 75, level: 10, symbol: 'REE' },
+                'Platinum Group Metals': { time: 20, cost: 200, value: 2000, xp: 100, level: 15, symbol: 'PGM' },
+                'Helium-3': { time: 24, cost: 300, value: 5000, xp: 150, level: 20, symbol: 'He-3' }
+            },
+            boosters: {
+                'Basic Booster': { cost: 100, multiplier: 2, level: 1, duration: 3600 },
+                'Advanced Booster': { cost: 250, multiplier: 3, level: 5, duration: 3600 },
+                'Elite Booster': { cost: 500, multiplier: 4, level: 10, duration: 3600 },
+                'Master Booster': { cost: 1000, multiplier: 5, level: 15, duration: 3600 },
+                'Ultimate Booster': { cost: 2000, multiplier: 10, level: 20, duration: 3600 }
+            },
+            levelThresholds: [0, 1000, 2500, 4500, 7000, 10000, 13500, 17500, 22000, 27000, 32500],
+            cellUnlocks: {
+                1: 3, 5: 5, 10: 8, 15: 12, 20: 16, 25: 24, 30: 32, 35: 48, 40: 64
+            }
+        };
+
+        // Initialize game
+        function initGame() {
+            loadGameState();
+            generateGrid();
+            updateUI();
+            setupEventListeners();
+            startGameLoop();
+            
+            // Hide loading screen
+            setTimeout(() => {
+                document.getElementById('loading').classList.remove('show');
+            }, 500);
+        }
+
+        // Generate hexagonal grid
+        function generateGrid() {
+            const grid = document.getElementById('hexGrid');
+            grid.innerHTML = '';
+            
+            gameState.cells.forEach((cell, index) => {
+                const cellElement = document.createElement('div');
+                cellElement.className = 'hex-cell tooltip';
+                cellElement.dataset.index = index;
+                cellElement.onclick = () => selectCell(index);
+                
+                updateCellDisplay(cellElement, cell);
+                grid.appendChild(cellElement);
+            });
+        }
+
+        // Update cell display
+        function updateCellDisplay(element, cell) {
+            const index = parseInt(element.dataset.index);
+            element.className = 'hex-cell tooltip';
+            
+            if (!cell.owned) {
+                element.classList.add('available');
+                element.textContent = '+';
+                element.dataset.tooltip = 'Available for purchase (500 pts)';
+            } else if (cell.isReady) {
+                element.classList.add('ready');
+                element.textContent = gameConfig.resources[cell.resourceType]?.symbol || '';
+                element.dataset.tooltip = `${cell.resourceType} - Ready to collect!`;
+            } else if (cell.extractionStartTime) {
+                element.classList.add('extracting');
+                element.textContent = gameConfig.resources[cell.resourceType]?.symbol || '';
+                
+                const timer = element.querySelector('.timer') || document.createElement('div');
+                timer.className = 'timer';
+                if (!element.querySelector('.timer')) {
+                    element.appendChild(timer);
+                }
+                
+                const remaining = Math.max(0, cell.extractionEndTime - Date.now());
+                const totalMinutes = Math.floor(remaining / 60000);
+                const seconds = Math.floor((remaining % 60000) / 1000);
+                const timeStr = `${totalMinutes}:${seconds.toString().padStart(2, '0')}`;
+                timer.textContent = timeStr;
+                
+                element.dataset.tooltip = `${cell.resourceType} - ${timeStr} remaining`;
+            } else {
+                element.classList.add('owned');
+                element.textContent = '⚡';
+                element.dataset.tooltip = 'Owned cell - Ready for expedition';
+            }
+            
+            if (index === gameState.selectedCell) {
+                element.classList.add('selected');
+            }
+        }
+
+        // Select cell
+        function selectCell(index) {
+            const cell = gameState.cells[index];
+            
+            if (!cell.owned) {
+                if (gameState.points >= 500 && gameState.ownedCells < gameState.maxCells) {
+                    if (confirm(`Purchase this cell for 500 points?`)) {
+                        buyCell(index);
+                    }
+                } else if (gameState.ownedCells >= gameState.maxCells) {
+                    showNotification('You have reached the maximum number of cells for your level!', 'warning');
+                } else {
+                    showNotification('Not enough points to purchase this cell!', 'error');
+                }
+                return;
+            }
+            
+            if (cell.isReady) {
+                collectResource(index);
+                return;
+            }
+            
+            // Handle different modes
+            if (gameState.mode === 'deploy' && gameState.selectedExpedition) {
+                deployExpedition(index);
+                return;
+            }
+            
+            if (gameState.mode === 'booster' && gameState.selectedBooster) {
+                applyBoosterToCell(index);
+                return;
+            }
+            
+            if (cell.extractionStartTime) {
+                showNotification('This cell is already extracting! Wait for completion or select a different action.', 'warning');
+                return;
+            }
+            
+            // Default selection
+            gameState.selectedCell = index;
+            updateUI();
+            updateCellInfo();
+        }
+
+        // Update cell info display
+        function updateCellInfo() {
+            const cellInfo = document.getElementById('cellInfo');
+            
+            if (gameState.mode === 'deploy' && gameState.selectedExpedition) {
+                cellInfo.textContent = `Click an owned cell to deploy ${gameState.selectedExpedition} expedition`;
+                return;
+            }
+            
+            if (gameState.mode === 'booster' && gameState.selectedBooster) {
+                cellInfo.textContent = `Click a cell to apply ${gameState.selectedBooster}`;
+                return;
+            }
+            
+            if (gameState.selectedCell === null) {
+                cellInfo.textContent = 'Buy expeditions, then deploy from Resources tab';
+                return;
+            }
+            
+            const cell = gameState.cells[gameState.selectedCell];
+            if (cell.extractionStartTime) {
+                cellInfo.textContent = `Cell ${gameState.selectedCell + 1}: Extracting ${cell.resourceType}`;
+            } else if (cell.isReady) {
+                cellInfo.textContent = `Cell ${gameState.selectedCell + 1}: Ready to collect ${cell.resourceType}`;
+            } else {
+                cellInfo.textContent = `Cell ${gameState.selectedCell + 1}: Ready for expedition`;
+            }
+        }
+
+        // Buy cell
+        function buyCell(index = null) {
+            if (index === null) {
+                // Find first available cell
+                index = gameState.cells.findIndex(cell => !cell.owned);
+                if (index === -1) {
+                    showNotification('No cells available for purchase!', 'error');
+                    return;
+                }
+            }
+            
+            if (gameState.points < 500) {
+                showNotification('Not enough points!', 'error');
+                return;
+            }
+            
+            if (gameState.ownedCells >= gameState.maxCells) {
+                showNotification('Maximum cells reached for your level!', 'warning');
+                return;
+            }
+            
+            gameState.points -= 500;
+            gameState.ownedCells++;
+            gameState.cells[index].owned = true;
+            gameState.xp += 100;
+            
+            showNotification('Cell purchased successfully!', 'success');
+            checkLevelUp();
+            updateUI();
+            saveGameState();
+        }
+
+        // Deploy expedition to cell
+        function deployExpedition(index) {
+            const cell = gameState.cells[index];
+            
+            if (!cell.owned) {
+                showNotification('This cell is not owned!', 'error');
+                return;
+            }
+            
+            if (cell.extractionStartTime) {
+                showNotification('This cell is already extracting!', 'warning');
+                return;
+            }
+            
+            if (cell.isReady) {
+                showNotification('Collect the current resource first!', 'warning');
+                return;
+            }
+            
+            if (gameState.expeditions[gameState.selectedExpedition] === 0) {
+                showNotification(`No ${gameState.selectedExpedition} expeditions in inventory!`, 'error');
+                return;
+            }
+            
+            const resourceConfig = gameConfig.resources[gameState.selectedExpedition];
+            
+            // Calculate extraction time in milliseconds (time is now in minutes)
+            let extractionTime = resourceConfig.time * 60 * 1000; // Convert minutes to milliseconds
+            
+            // Apply debug speed multiplier
+            extractionTime = Math.floor(extractionTime / gameState.debugSpeed);
+            
+            // Apply booster if active
+            if (gameState.activeBooster && Date.now() < gameState.boosterEndTime) {
+                const boosterConfig = gameConfig.boosters[gameState.activeBooster];
+                extractionTime = Math.floor(extractionTime / boosterConfig.multiplier);
+            }
+            
+            // Deploy expedition (use inventory, no cost)
+            gameState.expeditions[gameState.selectedExpedition]--;
+            cell.resourceType = gameState.selectedExpedition;
+            cell.extractionStartTime = Date.now();
+            cell.extractionEndTime = Date.now() + extractionTime;
+            cell.isReady = false;
+            
+            // Reset mode and selection
+            gameState.mode = 'select';
+            gameState.selectedExpedition = null;
+            
+            showNotification(`Deployed ${cell.resourceType} expedition!`, 'success');
+            updateUI();
+            saveGameState();
+        }
+
+        // Collect resource
+        function collectResource(index) {
+            const cell = gameState.cells[index];
+            
+            // Additional validation - check if extraction is actually complete
+            if (!cell.isReady) {
+                showNotification('Resource is not ready for collection yet!', 'warning');
+                return;
+            }
+            
+            if (!cell.extractionEndTime || Date.now() < cell.extractionEndTime) {
+                showNotification('Extraction still in progress!', 'warning');
+                return;
+            }
+            
+            const resourceType = cell.resourceType; // Store before resetting
+            const resourceConfig = gameConfig.resources[resourceType];
+            gameState.resources[resourceType]++;
+            gameState.xp += resourceConfig.xp;
+            
+            // Reset cell
+            cell.resourceType = null;
+            cell.extractionStartTime = null;
+            cell.extractionEndTime = null;
+            cell.isReady = false;
+            
+            showNotification(`Collected ${resourceType}!`, 'success');
+            checkLevelUp();
+            updateUI();
+            saveGameState();
+        }
+
+        // Apply booster
+        function applyBooster() {
+            if (gameState.selectedCell === null) {
+                showNotification('Please select a cell first!', 'warning');
+                return;
+            }
+            
+            // Show booster selection (simplified - use basic booster for now)
+            const boosterName = 'Basic Booster';
+            const boosterConfig = gameConfig.boosters[boosterName];
+            
+            if (gameState.level < boosterConfig.level) {
+                showNotification(`Level ${boosterConfig.level} required for this booster!`, 'error');
+                return;
+            }
+            
+            if (gameState.points < boosterConfig.cost) {
+                showNotification(`Not enough points! Need ${boosterConfig.cost} points.`, 'error');
+                return;
+            }
+            
+            gameState.points -= boosterConfig.cost;
+            gameState.activeBooster = boosterName;
+            gameState.boosterEndTime = Date.now() + boosterConfig.duration * 1000;
+            
+            showNotification(`${boosterName} activated!`, 'success');
+            updateUI();
+            saveGameState();
+        }
+
+        // Sell resources
+        function sellResources() {
+            let totalValue = 0;
+            let soldItems = 0;
+            
+            Object.entries(gameState.resources).forEach(([resourceType, amount]) => {
+                if (amount > 0) {
+                    const value = gameConfig.resources[resourceType].value * amount;
+                    totalValue += value;
+                    soldItems += amount;
+                    gameState.resources[resourceType] = 0;
+                }
+            });
+            
+            if (totalValue === 0) {
+                showNotification('No resources to sell!', 'warning');
+                return;
+            }
+            
+            gameState.points += totalValue;
+            gameState.xp += Math.floor(totalValue * 0.05); // 5% of sale value as XP
+            
+            showNotification(`Sold ${soldItems} resources for ${totalValue} points!`, 'success');
+            checkLevelUp();
+            updateUI();
+            saveGameState();
+        }
+
+        // Check level up
+        function checkLevelUp() {
+            const currentThreshold = gameConfig.levelThresholds[gameState.level] || gameConfig.levelThresholds[gameConfig.levelThresholds.length - 1];
+            const nextThreshold = gameConfig.levelThresholds[gameState.level + 1];
+            
+            if (nextThreshold && gameState.xp >= nextThreshold) {
+                gameState.level++;
+                gameState.xp = Math.max(0, gameState.xp - nextThreshold);
+                
+                // Update max cells based on level
+                const newMaxCells = Object.entries(gameConfig.cellUnlocks)
+                    .filter(([level, _]) => parseInt(level) <= gameState.level)
+                    .pop()?.[1] || 3;
+                
+                gameState.maxCells = newMaxCells;
+                
+                showNotification(`Level up! You are now level ${gameState.level}!`, 'success');
+                updateUI();
+                saveGameState();
+            }
+        }
+
+        // Update UI
+        function updateUI() {
+            // Update header stats
+            document.getElementById('level').textContent = gameState.level;
+            const currentThreshold = gameConfig.levelThresholds[gameState.level] || 0;
+            const nextThreshold = gameConfig.levelThresholds[gameState.level + 1] || gameConfig.levelThresholds[gameConfig.levelThresholds.length - 1];
+            const xpProgress = nextThreshold ? ((gameState.xp) / nextThreshold) * 100 : 100;
+            
+            document.getElementById('xp').textContent = `${gameState.xp} / ${nextThreshold || 'MAX'}`;
+            document.getElementById('xp-progress').style.width = `${xpProgress}%`;
+            document.getElementById('points').textContent = gameState.points.toLocaleString();
+            document.getElementById('cells').textContent = `${gameState.ownedCells} / ${gameState.maxCells}`;
+            
+            // Update cells
+            document.querySelectorAll('.hex-cell').forEach((element, index) => {
+                updateCellDisplay(element, gameState.cells[index]);
+            });
+
+            // Update tab content
+            updateTabContent();
+            
+            // Update resource list in separate panel
+            updateResourceList();
+            
+            // Update cell info
+            updateCellInfo();
+            
+            // Update action buttons
+            updateActionButtons();
+        }
+
+        // Update resource list in the separate panel
+        function updateResourceList() {
+            const resourceList = document.getElementById('resourceList');
+            resourceList.innerHTML = '';
+            
+            // Add expeditions section
+            const expeditionTitle = document.createElement('div');
+            expeditionTitle.className = 'panel-title';
+            expeditionTitle.textContent = 'Deploy Expeditions';
+            expeditionTitle.style.marginBottom = '10px';
+            resourceList.appendChild(expeditionTitle);
+            
+            let hasExpeditions = false;
+            Object.entries(gameConfig.resources).forEach(([resourceType, resourceConfig]) => {
+                if (resourceConfig.level <= gameState.level) {
+                    const amount = gameState.expeditions[resourceType] || 0;
+                    const isSelected = gameState.selectedExpedition === resourceType;
+                    const hasExp = amount > 0;
+                    
+                    if (hasExp) hasExpeditions = true;
+                    
+                    const item = document.createElement('div');
+                    item.className = `resource-item ${isSelected ? 'selected' : ''} ${!hasExp ? 'disabled' : ''}`;
+                    item.innerHTML = `
+                        <div>
+                            <div class="resource-name">${resourceType}</div>
+                            <div class="resource-value">${resourceConfig.time}m duration | ${resourceConfig.value} pts reward</div>
+                        </div>
+                        <div class="resource-amount">${amount}</div>
+                    `;
+                    
+                    if (hasExp) {
+                        item.onclick = () => selectExpedition(resourceType);
+                    }
+                    
+                    resourceList.appendChild(item);
+                }
+            });
+            
+            if (!hasExpeditions) {
+                const noExpeditions = document.createElement('div');
+                noExpeditions.className = 'resource-item disabled';
+                noExpeditions.innerHTML = `
+                    <div>
+                        <div class="resource-name">Purchase expeditions from the Buy tab</div>
+                        <div class="resource-value">Select an expedition type above to deploy</div>
+                    </div>
+                    <div class="resource-amount">ℹ️</div>
+                `;
+                resourceList.appendChild(noExpeditions);
+            }
+            
+            // Add boosters section
+            const boosterTitle = document.createElement('div');
+            boosterTitle.className = 'panel-title';
+            boosterTitle.textContent = 'Apply Boosters';
+            boosterTitle.style.marginTop = '20px';
+            boosterTitle.style.marginBottom = '10px';
+            resourceList.appendChild(boosterTitle);
+            
+            let hasBoosters = false;
+            Object.entries(gameConfig.boosters).forEach(([boosterName, boosterConfig]) => {
+                if (boosterConfig.level <= gameState.level) {
+                    const amount = gameState.boosters[boosterName] || 0;
+                    const isSelected = gameState.selectedBooster === boosterName;
+                    const hasBoost = amount > 0;
+                    
+                    if (hasBoost) hasBoosters = true;
+                    
+                    const item = document.createElement('div');
+                    item.className = `booster-item ${isSelected ? 'selected' : ''} ${!hasBoost ? 'disabled' : ''}`;
+                    item.innerHTML = `
+                        <div class="booster-info">
+                            <div class="booster-name">${boosterName}</div>
+                            <div class="booster-effect">${boosterConfig.multiplier}x speed - 1 hour</div>
+                            ${!hasBoost ? '<div class="booster-effect">No boosters owned</div>' : ''}
+                        </div>
+                        <div class="booster-cost">${amount}</div>
+                    `;
+                    
+                    if (hasBoost) {
+                        item.onclick = () => selectBooster(boosterName);
+                    }
+                    
+                    resourceList.appendChild(item);
+                }
+            });
+            
+            if (!hasBoosters) {
+                const noBoosters = document.createElement('div');
+                noBoosters.className = 'booster-item disabled';
+                noBoosters.innerHTML = `
+                    <div class="booster-info">
+                        <div class="booster-name">No boosters owned</div>
+                        <div class="booster-effect">Purchase boosters from the Buy tab</div>
+                    </div>
+                    <div class="booster-cost">0</div>
+                `;
+                resourceList.appendChild(noBoosters);
+            }
+        }
+
+        // Update tab content
+        function updateTabContent() {
+            const tabContent = document.getElementById('tabContent');
+            
+            if (gameState.activeTab === 'buy') {
+                tabContent.innerHTML = '<div class="panel-title">Purchase Expeditions</div>';
+                
+                Object.entries(gameConfig.resources).forEach(([resourceType, config]) => {
+                    const canAfford = gameState.points >= config.cost;
+                    const levelOk = gameState.level >= config.level;
+                    const isDisabled = !canAfford || !levelOk;
+                    
+                    const item = document.createElement('div');
+                    item.className = `resource-item ${isDisabled ? 'disabled' : ''}`;
+                    item.innerHTML = `
+                        <div>
+                            <div class="resource-name">${resourceType}</div>
+                            <div class="resource-value">${config.value} pts reward | ${config.time}m duration</div>
+                            <div class="resource-cost">Cost: ${config.cost} pts</div>
+                            ${!levelOk ? `<div class="resource-cost" style="color: #f44336;">Requires Level ${config.level}</div>` : ''}
+                        </div>
+                        <div class="resource-amount">Buy</div>
+                    `;
+                    
+                    if (!isDisabled) {
+                        item.onclick = () => purchaseExpedition(resourceType);
+                    }
+                    
+                    tabContent.appendChild(item);
+                });
+                
+                // Add booster section
+                const boosterSection = document.createElement('div');
+                boosterSection.innerHTML = '<div class="panel-title" style="margin-top: 20px;">Purchase Boosters</div>';
+                tabContent.appendChild(boosterSection);
+                
+                Object.entries(gameConfig.boosters).forEach(([boosterName, config]) => {
+                    const canAfford = gameState.points >= config.cost;
+                    const levelOk = gameState.level >= config.level;
+                    const isDisabled = !canAfford || !levelOk;
+                    
+                    const item = document.createElement('div');
+                    item.className = `booster-item ${isDisabled ? 'disabled' : ''}`;
+                    item.innerHTML = `
+                        <div class="booster-info">
+                            <div class="booster-name">${boosterName}</div>
+                            <div class="booster-effect">${config.multiplier}x speed - 1 hour</div>
+                            ${!levelOk ? `<div class="booster-effect" style="color: #f44336;">Requires Level ${config.level}</div>` : ''}
+                        </div>
+                        <div class="booster-cost">${config.cost}</div>
+                    `;
+                    
+                    if (!isDisabled) {
+                        item.onclick = () => purchaseBooster(boosterName);
+                    }
+                    
+                    tabContent.appendChild(item);
+                });
+                
+            } else if (gameState.activeTab === 'resources') {
+                // Show collected resources inventory with sell functionality
+                tabContent.innerHTML = '<div class="panel-title">Collected Resources</div>';
+                
+                let hasResources = false;
+                Object.entries(gameState.resources).forEach(([resourceType, amount]) => {
+                    if (amount > 0) {
+                        hasResources = true;
+                        const resourceConfig = gameConfig.resources[resourceType];
+                        const totalValue = resourceConfig.value * amount;
+                        const item = document.createElement('div');
+                        item.className = 'resource-item';
+                        item.innerHTML = `
+                            <div>
+                                <div class="resource-name">${resourceType}</div>
+                                <div class="resource-value">Value: ${resourceConfig.value} pts each (Total: ${totalValue} pts)</div>
+                            </div>
+                            <div class="resource-amount">${amount} 
+                                <button class="action-btn" style="margin-left: 10px; padding: 5px 10px; font-size: 10px;" onclick="sellSingleResource('${resourceType}')">Sell</button>
+                            </div>
+                        `;
+                        tabContent.appendChild(item);
+                    }
+                });
+                
+                if (!hasResources) {
+                    const noResources = document.createElement('div');
+                    noResources.className = 'resource-item disabled';
+                    noResources.innerHTML = `
+                        <div>
+                            <div class="resource-name">No resources collected yet</div>
+                            <div class="resource-value">Deploy expeditions to collect resources</div>
+                        </div>
+                        <div class="resource-amount">0</div>
+                    `;
+                    tabContent.appendChild(noResources);
+                }
+                
+            }
+        }
+
+        // Sell single resource
+        function sellSingleResource(resourceType) {
+            const amount = gameState.resources[resourceType];
+            if (amount === 0) {
+                showNotification(`No ${resourceType} to sell!`, 'warning');
+                return;
+            }
+            
+            const value = gameConfig.resources[resourceType].value * amount;
+            gameState.points += value;
+            gameState.resources[resourceType] = 0;
+            gameState.xp += Math.floor(value * 0.05);
+            
+            showNotification(`Sold ${amount} ${resourceType} for ${value} points!`, 'success');
+            checkLevelUp();
+            updateUI();
+            saveGameState();
+        }
+
+        // Update action buttons
+        function updateActionButtons() {
+            const buyBtn = document.getElementById('buyCell');
+            const sellBtn = document.getElementById('sellResources');
+            const cancelBtn = document.getElementById('cancelSelection');
+            
+            // Buy cell button
+            const canBuyCell = gameState.points >= 500 && gameState.ownedCells < gameState.maxCells;
+            buyBtn.disabled = !canBuyCell;
+            
+            // Sell resources button
+            const hasResources = Object.values(gameState.resources).some(amount => amount > 0);
+            sellBtn.disabled = !hasResources;
+            
+            // Cancel selection button
+            const hasSelection = gameState.mode !== 'select' || gameState.selectedCell !== null;
+            cancelBtn.style.display = hasSelection ? 'flex' : 'none';
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            document.getElementById('buyCell').onclick = () => buyCell();
+            document.getElementById('sellResources').onclick = sellResources;
+            document.getElementById('cancelSelection').onclick = cancelSelection;
+            
+            // Tab switching
+            document.getElementById('buyTab').onclick = () => {
+                gameState.activeTab = 'buy';
+                document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+                document.getElementById('buyTab').classList.add('active');
+                updateUI();
+            };
+            
+            document.getElementById('resourcesTab').onclick = () => {
+                gameState.activeTab = 'resources';
+                document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+                document.getElementById('resourcesTab').classList.add('active');
+                updateUI();
+            };
+            
+            // Debug panel controls
+            document.getElementById('speedSlider').oninput = updateDebugSpeed;
+            
+            // Initialize debug display
+            document.getElementById('speedDisplay').textContent = `${gameState.debugSpeed}x`;
+            document.getElementById('speedSlider').value = gameState.debugSpeed;
+        }
+
+        // Game loop
+        function startGameLoop() {
+            setInterval(() => {
+                const now = Date.now();
+                let updated = false;
+                
+                // Check extraction timers (apply debug speed)
+                gameState.cells.forEach(cell => {
+                    if (cell.extractionEndTime && now >= cell.extractionEndTime && !cell.isReady) {
+                        cell.isReady = true;
+                        updated = true;
+                    }
+                });
+                
+                // Check booster expiration
+                if (gameState.activeBooster && now >= gameState.boosterEndTime) {
+                    gameState.activeBooster = null;
+                    gameState.boosterEndTime = null;
+                    updated = true;
+                }
+                
+                if (updated) {
+                    updateUI();
+                    saveGameState();
+                }
+            }, Math.max(100, Math.floor(1000 / gameState.debugSpeed))); // Faster updates with debug speed
+        }
+
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.add('show'), 100);
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 3000);
+        }
+
+        // Save game state
+        function saveGameState() {
+            localStorage.setItem('farpostGame', JSON.stringify(gameState));
+        }
+
+        // Load game state
+        function loadGameState() {
+            const saved = localStorage.getItem('farpostGame');
+            if (saved) {
+                const loadedState = JSON.parse(saved);
+                // Merge with default state to handle new properties
+                gameState = { ...gameState, ...loadedState };
+                
+                // Ensure expeditions and boosters are properly initialized
+                if (!gameState.expeditions) {
+                    gameState.expeditions = {
+                        'Lunar Regolith': 0,
+                        'Iron Ore': 0,
+                        'Aluminum': 0,
+                        'Water Ice': 0,
+                        'Magnesium': 0,
+                        'Silicon': 0,
+                        'Titanium': 0,
+                        'Rare Earth Elements': 0,
+                        'Platinum Group Metals': 0,
+                        'Helium-3': 0
+                    };
+                }
+                
+                if (!gameState.boosters) {
+                    gameState.boosters = {
+                        'Basic Booster': 0,
+                        'Advanced Booster': 0,
+                        'Elite Booster': 0,
+                        'Master Booster': 0,
+                        'Ultimate Booster': 0
+                    };
+                }
+                
+                // Set default mode and activeTab if missing
+                gameState.mode = gameState.mode || 'select';
+                gameState.activeTab = gameState.activeTab || 'buy';
+                gameState.debugSpeed = gameState.debugSpeed || 1;
+                
+                console.log('Game state loaded:', gameState);
+            }
+        }
+
+        // Apply booster to specific cell
+        function applyBoosterToCell(index) {
+            // Check if any cells are currently extracting
+            const extractingCells = gameState.cells.filter(cell => cell.extractionStartTime && !cell.isReady);
+            if (extractingCells.length > 0) {
+                showNotification('Cannot apply booster while extractions are in progress! Collect all resources first.', 'error');
+                return;
+            }
+            
+            if (gameState.boosters[gameState.selectedBooster] === 0) {
+                showNotification(`No ${gameState.selectedBooster} in inventory!`, 'error');
+                return;
+            }
+            
+            const boosterConfig = gameConfig.boosters[gameState.selectedBooster];
+            
+            // Apply booster globally (affects all future expeditions, use inventory)
+            gameState.boosters[gameState.selectedBooster]--;
+            gameState.activeBooster = gameState.selectedBooster;
+            gameState.boosterEndTime = Date.now() + boosterConfig.duration * 1000;
+            
+            // Reset mode and selection
+            gameState.mode = 'select';
+            gameState.selectedBooster = null;
+            
+            showNotification(`${gameState.activeBooster} activated for 1 hour!`, 'success');
+            updateUI();
+            saveGameState();
+        }
+
+        // Select booster for application
+        function selectBooster(boosterName) {
+            if (gameState.boosters[boosterName] === 0) {
+                showNotification(`No ${boosterName} in inventory!`, 'error');
+                return;
+            }
+            
+            gameState.selectedBooster = boosterName;
+            gameState.selectedExpedition = null;
+            gameState.mode = 'booster';
+            
+            showNotification(`Selected ${boosterName}. Now click a cell to apply booster!`, 'success');
+            updateUI();
+        }
+
+        // Cancel current selection
+        function cancelSelection() {
+            gameState.selectedExpedition = null;
+            gameState.selectedBooster = null;
+            gameState.mode = 'select';
+            gameState.selectedCell = null;
+            
+            showNotification('Selection cancelled.', 'warning');
+            updateUI();
+        }
+
+        // Purchase expedition
+        function purchaseExpedition(resourceType) {
+            const resourceConfig = gameConfig.resources[resourceType];
+            
+            // Check if resource is available at current level
+            if (resourceConfig.level > gameState.level) {
+                showNotification(`Level ${resourceConfig.level} required for ${resourceType}!`, 'error');
+                return;
+            }
+            
+            // Check if player has enough points
+            if (gameState.points < resourceConfig.cost) {
+                showNotification(`Not enough points! Need ${resourceConfig.cost} points for ${resourceType} expedition.`, 'error');
+                return;
+            }
+            
+            // Purchase expedition
+            gameState.points -= resourceConfig.cost;
+            gameState.expeditions[resourceType] = (gameState.expeditions[resourceType] || 0) + 1;
+            
+            showNotification(`Purchased ${resourceType} expedition! (Owned: ${gameState.expeditions[resourceType]})`, 'success');
+            console.log('Expedition purchased:', resourceType, 'Total owned:', gameState.expeditions[resourceType]);
+            updateUI();
+            saveGameState();
+        }
+
+        // Select expedition for deployment
+        function selectExpedition(resourceType) {
+            if (gameState.expeditions[resourceType] === 0) {
+                showNotification(`No ${resourceType} expeditions in inventory!`, 'error');
+                return;
+            }
+            
+            gameState.selectedExpedition = resourceType;
+            gameState.selectedBooster = null;
+            gameState.mode = 'deploy';
+            
+            showNotification(`Selected ${resourceType} expedition. Now click a cell to deploy!`, 'success');
+            updateUI();
+        }
+
+        // Purchase booster
+        function purchaseBooster(boosterName) {
+            const boosterConfig = gameConfig.boosters[boosterName];
+            
+            if (gameState.level < boosterConfig.level) {
+                showNotification(`Level ${boosterConfig.level} required for ${boosterName}!`, 'error');
+                return;
+            }
+            
+            if (gameState.points < boosterConfig.cost) {
+                showNotification(`Not enough points! Need ${boosterConfig.cost} points for ${boosterName}.`, 'error');
+                return;
+            }
+            
+            // Purchase booster
+            gameState.points -= boosterConfig.cost;
+            gameState.boosters[boosterName] = (gameState.boosters[boosterName] || 0) + 1;
+            
+            showNotification(`Purchased ${boosterName}! (Owned: ${gameState.boosters[boosterName]})`, 'success');
+            console.log('Booster purchased:', boosterName, 'Total owned:', gameState.boosters[boosterName]);
+            updateUI();
+            saveGameState();
+        }
+
+        // Debug functions
+        function toggleDebug() {
+            const debugPanel = document.getElementById('debugPanel');
+            debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function updateDebugSpeed() {
+            const slider = document.getElementById('speedSlider');
+            const display = document.getElementById('speedDisplay');
+            gameState.debugSpeed = parseInt(slider.value);
+            display.textContent = `${gameState.debugSpeed}x`;
+            saveGameState();
+        }
+
+        // Keyboard shortcut for debug panel
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'd') {
+                e.preventDefault();
+                toggleDebug();
+            }
+        });
+
+        // Initialize game when page loads
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html> 
