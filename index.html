@@ -17,6 +17,10 @@
             color: #fff;
             min-height: 100vh;
             overflow-x: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
 
         /* Header */
@@ -120,6 +124,10 @@
             font-size: 10px;
             text-align: center;
             font-weight: bold;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
 
         .hex-cell:hover {
@@ -145,10 +153,18 @@
         }
 
         .hex-cell.ready {
-            background: #1a4a5a;
-            border-color: #00BCD4;
+            background: #4a3a1a;
+            border-color: #FF9800;
             animation: readyGlow 1.5s infinite;
-            box-shadow: 0 0 10px rgba(0, 188, 212, 0.4);
+            box-shadow: 0 0 10px rgba(255, 152, 0, 0.4);
+        }
+
+        .hex-cell.unavailable {
+            background: #2a2a2a;
+            border-color: #666;
+            color: #666;
+            cursor: not-allowed;
+            user-select: none;
         }
 
         @keyframes pulse {
@@ -162,8 +178,8 @@
         }
 
         @keyframes readyGlow {
-            0%, 100% { box-shadow: 0 0 10px rgba(0, 188, 212, 0.4); }
-            50% { box-shadow: 0 0 20px rgba(0, 188, 212, 0.8); }
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 152, 0, 0.4); }
+            50% { box-shadow: 0 0 20px rgba(255, 152, 0, 0.8); }
         }
 
         /* Timer overlay */
@@ -176,6 +192,8 @@
             color: #FFC107;
             white-space: nowrap;
             z-index: 2;
+            pointer-events: none;
+            user-select: none;
         }
 
         /* Progress overlay for extracting cells */
@@ -192,6 +210,8 @@
             transition: height 0.5s ease;
             z-index: 1;
             box-shadow: 0 -2px 8px rgba(255, 193, 7, 0.3);
+            pointer-events: none;
+            user-select: none;
         }
 
         /* Enhanced extracting animation */
@@ -408,61 +428,6 @@
             font-size: 14px;
         }
 
-        /* Action Bar */
-        .action-bar {
-            background: rgba(0, 0, 0, 0.8);
-            padding: 15px 20px;
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            border-top: 2px solid #333;
-            flex-wrap: wrap;
-        }
-
-        .action-btn {
-            padding: 12px 20px;
-            background: #4CAF50;
-            border: none;
-            border-radius: 8px;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            min-width: 120px;
-            justify-content: center;
-        }
-
-        .action-btn:hover {
-            background: #45a049;
-            transform: translateY(-2px);
-        }
-
-        .action-btn:disabled {
-            background: #666;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .action-btn.secondary {
-            background: #2196F3;
-        }
-
-        .action-btn.secondary:hover {
-            background: #1976D2;
-        }
-
-        .action-btn.danger {
-            background: #f44336;
-        }
-
-        .action-btn.danger:hover {
-            background: #d32f2f;
-        }
-
         /* Progress indicators */
         .progress-bar {
             width: 100%;
@@ -549,17 +514,6 @@
                 height: 44px;
                 font-size: 9px;
             }
-            
-            .action-bar {
-                padding: 10px 15px;
-                gap: 8px;
-            }
-            
-            .action-btn {
-                padding: 10px 16px;
-                font-size: 12px;
-                min-width: 100px;
-            }
         }
 
         @media (max-width: 480px) {
@@ -571,11 +525,6 @@
                 width: 45px;
                 height: 40px;
                 font-size: 8px;
-            }
-            
-            .action-btn {
-                min-width: 90px;
-                padding: 8px 12px;
             }
         }
 
@@ -761,16 +710,6 @@
         </div>
     </div>
 
-    <!-- Action Bar -->
-    <div class="action-bar">
-        <button class="action-btn secondary" id="buyCell">
-            🏪 Buy Cell (500 pts)
-        </button>
-        <button class="action-btn danger" id="sellResources">
-            💰 Sell All Resources
-        </button>
-    </div>
-
     <script>
         // Game state
         let gameState = {
@@ -816,7 +755,7 @@
             },
             cells: Array(18).fill(null).map((_, index) => ({
                 id: index,
-                owned: index < 3,
+                owned: [7, 8, 9].includes(index), // Middle cells owned by default
                 resourceType: null,
                 extractionStartTime: null,
                 extractionEndTime: null,
@@ -896,9 +835,20 @@
             }
             
             if (!cell.owned) {
-                element.classList.add('available');
-                element.textContent = '+';
-                element.dataset.tooltip = 'Available for purchase (500 pts)';
+                const canBuy = gameState.points >= 500 && gameState.ownedCells < gameState.maxCells;
+                if (canBuy) {
+                    element.classList.add('available');
+                    element.textContent = '+';
+                    element.dataset.tooltip = 'Click to buy for 500 pts';
+                } else {
+                    element.classList.add('unavailable');
+                    element.textContent = '🔒';
+                    if (gameState.ownedCells >= gameState.maxCells) {
+                        element.dataset.tooltip = 'Max cells reached for your level';
+                    } else {
+                        element.dataset.tooltip = 'Not enough points (need 500)';
+                    }
+                }
             } else if (cell.isReady) {
                 element.classList.add('ready');
                 element.textContent = gameConfig.resources[cell.resourceType]?.symbol || '';
@@ -952,7 +902,8 @@
             const cell = gameState.cells[index];
             
             if (!cell.owned) {
-                if (gameState.points >= 500 && gameState.ownedCells < gameState.maxCells) {
+                const canBuy = gameState.points >= 500 && gameState.ownedCells < gameState.maxCells;
+                if (canBuy) {
                     if (confirm(`Purchase this cell for 500 points?`)) {
                         buyCell(index);
                     }
@@ -981,6 +932,10 @@
             }
             
             if (cell.extractionStartTime) {
+                if (gameState.mode === 'booster' && gameState.selectedBooster) {
+                    applyBoosterToCell(index);
+                    return;
+                }
                 showNotification('This cell is already extracting! Wait for completion or select a different action.', 'warning');
                 return;
             }
@@ -1201,9 +1156,6 @@
             
             // Update cell info
             updateCellInfo();
-            
-            // Update action buttons
-            updateActionButtons();
         }
 
         // Update resource list in the separate panel
@@ -1427,25 +1379,8 @@
             saveGameState();
         }
 
-        // Update action buttons
-        function updateActionButtons() {
-            const buyBtn = document.getElementById('buyCell');
-            const sellBtn = document.getElementById('sellResources');
-            
-            // Buy cell button
-            const canBuyCell = gameState.points >= 500 && gameState.ownedCells < gameState.maxCells;
-            buyBtn.disabled = !canBuyCell;
-            
-            // Sell resources button
-            const hasResources = Object.values(gameState.resources).some(amount => amount > 0);
-            sellBtn.disabled = !hasResources;
-        }
-
         // Setup event listeners
         function setupEventListeners() {
-            document.getElementById('buyCell').onclick = () => buyCell();
-            document.getElementById('sellResources').onclick = sellResources;
-            
             // Tab switching
             document.getElementById('buyTab').onclick = () => {
                 gameState.activeTab = 'buy';
@@ -1603,19 +1538,33 @@
 
         // Apply booster to specific cell
         function applyBoosterToCell(index) {
-            // Check if any cells are currently extracting
-            const extractingCells = gameState.cells.filter(cell => cell.extractionStartTime && !cell.isReady);
-            if (extractingCells.length > 0) {
-                showNotification('Cannot apply booster while extractions are in progress! Collect all resources first.', 'error');
-                return;
-            }
-            
             if (gameState.boosters[gameState.selectedBooster] === 0) {
                 showNotification(`No ${gameState.selectedBooster} in inventory!`, 'error');
                 return;
             }
             
             const boosterConfig = gameConfig.boosters[gameState.selectedBooster];
+            const cell = gameState.cells[index];
+            
+            // If cell is extracting, apply booster to it specifically
+            if (cell.extractionStartTime && !cell.isReady) {
+                // Calculate remaining time and apply booster effect
+                const remaining = cell.extractionEndTime - Date.now();
+                const newEndTime = Date.now() + Math.floor(remaining / boosterConfig.multiplier);
+                cell.extractionEndTime = newEndTime;
+                
+                // Use booster from inventory
+                gameState.boosters[gameState.selectedBooster]--;
+                
+                // Reset mode and selection
+                gameState.mode = 'select';
+                gameState.selectedBooster = null;
+                
+                showNotification(`${gameState.selectedBooster} applied to extracting cell! Extraction time reduced.`, 'success');
+                updateUI();
+                saveGameState();
+                return;
+            }
             
             // Apply booster globally (affects all future expeditions, use inventory)
             gameState.boosters[gameState.selectedBooster]--;
