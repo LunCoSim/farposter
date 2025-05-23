@@ -66,6 +66,22 @@
             text-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
         }
 
+        .reset-btn {
+            margin-top: 5px;
+            padding: 6px 12px;
+            background: #ff4444;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background 0.3s;
+        }
+
+        .reset-btn:hover {
+            background: #ff6666;
+        }
+
         /* Main Layout */
         .main-container {
             display: grid;
@@ -643,7 +659,10 @@
         <div style="margin-bottom: 10px;">
             <input type="range" id="speedSlider" min="1" max="120" value="1" style="width: 100px;">
         </div>
-        <button onclick="toggleDebug()" style="padding: 5px 10px; background: #f44336; border: none; border-radius: 4px; color: white; cursor: pointer;">Hide</button>
+        <div style="margin-bottom: 10px;">
+            <button onclick="resetGame()" style="padding: 5px 10px; background: #ff4444; border: none; border-radius: 4px; color: white; cursor: pointer; margin-right: 5px;">Reset Game</button>
+            <button onclick="toggleDebug()" style="padding: 5px 10px; background: #f44336; border: none; border-radius: 4px; color: white; cursor: pointer;">Hide</button>
+        </div>
     </div>
 
     <!-- Header -->
@@ -671,6 +690,7 @@
         </div>
         <div class="game-title">
             <h1>🌙 Farpost</h1>
+            <button onclick="resetGame()" class="reset-btn">🔄 Reset Game</button>
         </div>
     </div>
 
@@ -769,16 +789,16 @@
         // Game configuration
         const gameConfig = {
             resources: {
-                'Lunar Regolith': { time: 0.5, cost: 20, value: 50, xp: 10, level: 1, symbol: 'LR' },
-                'Iron Ore': { time: 1, cost: 30, value: 100, xp: 15, level: 1, symbol: 'Fe' },
-                'Aluminum': { time: 2, cost: 35, value: 150, xp: 18, level: 1, symbol: 'Al' },
-                'Water Ice': { time: 4, cost: 40, value: 200, xp: 20, level: 1, symbol: 'H2O' },
-                'Magnesium': { time: 6, cost: 45, value: 180, xp: 22, level: 5, symbol: 'Mg' },
-                'Silicon': { time: 8, cost: 50, value: 250, xp: 25, level: 5, symbol: 'Si' },
-                'Titanium': { time: 12, cost: 80, value: 500, xp: 40, level: 5, symbol: 'Ti' },
-                'Rare Earth Elements': { time: 16, cost: 150, value: 1500, xp: 75, level: 10, symbol: 'REE' },
-                'Platinum Group Metals': { time: 20, cost: 200, value: 2000, xp: 100, level: 15, symbol: 'PGM' },
-                'Helium-3': { time: 24, cost: 300, value: 5000, xp: 150, level: 20, symbol: 'He-3' }
+                'Lunar Regolith': { time: 0.5, cost: 20, value: 50, xp: 15, level: 1, symbol: 'LR' },
+                'Iron Ore': { time: 1, cost: 30, value: 100, xp: 25, level: 1, symbol: 'Fe' },
+                'Aluminum': { time: 2, cost: 35, value: 150, xp: 30, level: 1, symbol: 'Al' },
+                'Water Ice': { time: 4, cost: 40, value: 200, xp: 35, level: 1, symbol: 'H2O' },
+                'Magnesium': { time: 6, cost: 45, value: 180, xp: 40, level: 5, symbol: 'Mg' },
+                'Silicon': { time: 8, cost: 50, value: 250, xp: 45, level: 5, symbol: 'Si' },
+                'Titanium': { time: 12, cost: 80, value: 500, xp: 60, level: 5, symbol: 'Ti' },
+                'Rare Earth Elements': { time: 16, cost: 150, value: 1500, xp: 100, level: 10, symbol: 'REE' },
+                'Platinum Group Metals': { time: 20, cost: 200, value: 2000, xp: 120, level: 15, symbol: 'PGM' },
+                'Helium-3': { time: 24, cost: 300, value: 5000, xp: 180, level: 20, symbol: 'He-3' }
             },
             boosters: {
                 'Basic Booster': { cost: 100, multiplier: 2, level: 1, duration: 3600 },
@@ -787,7 +807,7 @@
                 'Master Booster': { cost: 1000, multiplier: 5, level: 15, duration: 3600 },
                 'Ultimate Booster': { cost: 2000, multiplier: 10, level: 20, duration: 3600 }
             },
-            levelThresholds: [0, 1000, 2500, 4500, 7000, 10000, 13500, 17500, 22000, 27000, 32500],
+            levelThresholds: [0, 500, 1200, 2200, 3500, 5200, 7300, 9800, 12800, 16400, 20600],
             cellUnlocks: {
                 1: 3, 5: 5, 10: 8, 15: 12, 20: 16, 25: 24, 30: 32, 35: 48, 40: 64
             }
@@ -986,7 +1006,7 @@
             gameState.points -= 500;
             gameState.ownedCells++;
             gameState.cells[index].owned = true;
-            gameState.xp += 100;
+            gameState.xp += 150;
             
             showNotification('Cell purchased successfully!', 'success');
             checkLevelUp();
@@ -1110,12 +1130,10 @@
 
         // Check level up
         function checkLevelUp() {
-            const currentThreshold = gameConfig.levelThresholds[gameState.level] || gameConfig.levelThresholds[gameConfig.levelThresholds.length - 1];
-            const nextThreshold = gameConfig.levelThresholds[gameState.level + 1];
+            const nextThreshold = gameConfig.levelThresholds[gameState.level];
             
             if (nextThreshold && gameState.xp >= nextThreshold) {
                 gameState.level++;
-                gameState.xp = Math.max(0, gameState.xp - nextThreshold);
                 
                 // Update max cells based on level
                 const newMaxCells = Object.entries(gameConfig.cellUnlocks)
@@ -1134,12 +1152,20 @@
         function updateUI() {
             // Update header stats
             document.getElementById('level').textContent = gameState.level;
-            const currentThreshold = gameConfig.levelThresholds[gameState.level] || 0;
-            const nextThreshold = gameConfig.levelThresholds[gameState.level + 1] || gameConfig.levelThresholds[gameConfig.levelThresholds.length - 1];
-            const xpProgress = nextThreshold ? ((gameState.xp) / nextThreshold) * 100 : 100;
+            const currentThreshold = gameConfig.levelThresholds[gameState.level - 1] || 0;
+            const nextThreshold = gameConfig.levelThresholds[gameState.level];
             
-            document.getElementById('xp').textContent = `${gameState.xp} / ${nextThreshold || 'MAX'}`;
-            document.getElementById('xp-progress').style.width = `${xpProgress}%`;
+            if (nextThreshold) {
+                const xpInCurrentLevel = gameState.xp - currentThreshold;
+                const xpNeededForLevel = nextThreshold - currentThreshold;
+                const xpProgress = (xpInCurrentLevel / xpNeededForLevel) * 100;
+                document.getElementById('xp').textContent = `${Math.max(0, xpInCurrentLevel)} / ${xpNeededForLevel}`;
+                document.getElementById('xp-progress').style.width = `${Math.max(0, Math.min(100, xpProgress))}%`;
+            } else {
+                document.getElementById('xp').textContent = `${gameState.xp} / MAX`;
+                document.getElementById('xp-progress').style.width = '100%';
+            }
+            
             document.getElementById('points').textContent = gameState.points.toLocaleString();
             document.getElementById('cells').textContent = `${gameState.ownedCells} / ${gameState.maxCells}`;
             
@@ -1664,6 +1690,75 @@
         function toggleDebug() {
             const debugPanel = document.getElementById('debugPanel');
             debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function resetGame() {
+            if (confirm('Are you sure you want to reset all game progress? This cannot be undone!')) {
+                // Clear local storage
+                localStorage.removeItem('farpostGame');
+                
+                // Reset game state to default
+                gameState = {
+                    level: 1,
+                    xp: 0,
+                    points: 1000,
+                    ownedCells: 3,
+                    maxCells: 3,
+                    selectedExpedition: null,
+                    selectedBooster: null,
+                    activeBooster: null,
+                    boosterEndTime: null,
+                    resources: {
+                        'Lunar Regolith': 0,
+                        'Iron Ore': 0,
+                        'Aluminum': 0,
+                        'Water Ice': 0,
+                        'Magnesium': 0,
+                        'Silicon': 0,
+                        'Titanium': 0,
+                        'Rare Earth Elements': 0,
+                        'Platinum Group Metals': 0,
+                        'Helium-3': 0
+                    },
+                    expeditions: {
+                        'Lunar Regolith': 0,
+                        'Iron Ore': 0,
+                        'Aluminum': 0,
+                        'Water Ice': 0,
+                        'Magnesium': 0,
+                        'Silicon': 0,
+                        'Titanium': 0,
+                        'Rare Earth Elements': 0,
+                        'Platinum Group Metals': 0,
+                        'Helium-3': 0
+                    },
+                    boosters: {
+                        'Basic Booster': 0,
+                        'Advanced Booster': 0,
+                        'Elite Booster': 0,
+                        'Master Booster': 0,
+                        'Ultimate Booster': 0
+                    },
+                    cells: Array(18).fill(null).map((_, index) => ({
+                        id: index,
+                        owned: [7, 8, 9].includes(index), // Middle cells owned by default
+                        resourceType: null,
+                        extractionStartTime: null,
+                        extractionEndTime: null,
+                        isReady: false
+                    })),
+                    activeTab: 'buy',
+                    mode: 'select',
+                    debugSpeed: 1
+                };
+                
+                // Regenerate grid and update UI
+                generateGrid();
+                updateUI();
+                saveGameState();
+                
+                showNotification('Game reset successfully!', 'success');
+            }
         }
 
         function updateDebugSpeed() {
