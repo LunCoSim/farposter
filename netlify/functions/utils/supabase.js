@@ -10,10 +10,17 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: false,
-    autoRefreshToken: false
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+    flowType: 'implicit'
   },
   realtime: {
-    disabled: true
+    enabled: false
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'netlify-functions'
+    }
   }
 });
 
