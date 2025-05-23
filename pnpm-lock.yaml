@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@supabase/auth-js':
+        specifier: ^2.69.1
+        version: 2.69.1
+      '@supabase/postgrest-js':
+        specifier: ^1.19.4
+        version: 1.19.4
       '@supabase/supabase-js':
         specifier: ^2.38.0
         version: 2.49.8

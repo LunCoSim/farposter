@@ -9,7 +9,9 @@
     "deploy": "netlify deploy --prod"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.38.0"
+    "@supabase/supabase-js": "^2.38.0",
+    "@supabase/auth-js": "^2.69.1",
+    "@supabase/postgrest-js": "^1.19.4"
   },
   "devDependencies": {
     "netlify-cli": "^17.0.0"
