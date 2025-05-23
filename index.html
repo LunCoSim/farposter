@@ -144,15 +144,11 @@
             border-color: #2196F3;
         }
 
-        .hex-cell.selected {
-            border-color: #FF5722;
-            box-shadow: 0 0 15px rgba(255, 87, 34, 0.5);
-        }
-
         .hex-cell.ready {
-            background: #2a5a2a;
-            border-color: #4CAF50;
-            animation: glow 1.5s infinite;
+            background: #1a4a5a;
+            border-color: #00BCD4;
+            animation: readyGlow 1.5s infinite;
+            box-shadow: 0 0 10px rgba(0, 188, 212, 0.4);
         }
 
         @keyframes pulse {
@@ -165,6 +161,11 @@
             50% { box-shadow: 0 0 20px rgba(76, 175, 80, 0.8); }
         }
 
+        @keyframes readyGlow {
+            0%, 100% { box-shadow: 0 0 10px rgba(0, 188, 212, 0.4); }
+            50% { box-shadow: 0 0 20px rgba(0, 188, 212, 0.8); }
+        }
+
         /* Timer overlay */
         .timer {
             position: absolute;
@@ -174,6 +175,59 @@
             font-size: 8px;
             color: #FFC107;
             white-space: nowrap;
+            z-index: 2;
+        }
+
+        /* Progress overlay for extracting cells */
+        .progress-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(180deg, 
+                rgba(255, 193, 7, 0.8) 0%, 
+                rgba(255, 152, 0, 0.6) 50%, 
+                rgba(255, 87, 34, 0.4) 100%);
+            border-radius: 0 0 8px 8px;
+            transition: height 0.5s ease;
+            z-index: 1;
+            box-shadow: 0 -2px 8px rgba(255, 193, 7, 0.3);
+        }
+
+        /* Enhanced extracting animation */
+        .hex-cell.extracting {
+            overflow: hidden;
+        }
+
+        .hex-cell.extracting .progress-overlay {
+            animation: progressPulse 2s ease-in-out infinite;
+        }
+
+        /* Near completion effect */
+        .progress-overlay.near-completion {
+            background: linear-gradient(180deg, 
+                rgba(76, 175, 80, 0.9) 0%, 
+                rgba(139, 195, 74, 0.7) 50%, 
+                rgba(255, 193, 7, 0.5) 100%);
+            animation: nearCompletionGlow 1s ease-in-out infinite;
+        }
+
+        @keyframes progressPulse {
+            0%, 100% { 
+                box-shadow: 0 -2px 8px rgba(255, 193, 7, 0.3);
+            }
+            50% { 
+                box-shadow: 0 -4px 12px rgba(255, 193, 7, 0.6);
+            }
+        }
+
+        @keyframes nearCompletionGlow {
+            0%, 100% { 
+                box-shadow: 0 -2px 12px rgba(76, 175, 80, 0.4);
+            }
+            50% { 
+                box-shadow: 0 -6px 18px rgba(76, 175, 80, 0.8);
+            }
         }
 
         /* Resource Panel */
@@ -715,9 +769,6 @@
         <button class="action-btn danger" id="sellResources">
             💰 Sell All Resources
         </button>
-        <button class="action-btn secondary" id="cancelSelection" style="display: none;">
-            ❌ Cancel Selection
-        </button>
     </div>
 
     <script>
@@ -728,7 +779,6 @@
             points: 1000,
             ownedCells: 3,
             maxCells: 3,
-            selectedCell: null,
             selectedExpedition: null,
             selectedBooster: null,
             activeBooster: null,
@@ -772,7 +822,7 @@
                 extractionEndTime: null,
                 isReady: false
             })),
-            activeTab: 'expeditions',
+            activeTab: 'buy',
             mode: 'select', // 'select', 'deploy', 'booster'
             debugSpeed: 1
         };
@@ -839,6 +889,12 @@
             const index = parseInt(element.dataset.index);
             element.className = 'hex-cell tooltip';
             
+            // Clear any existing overlays
+            const existingOverlay = element.querySelector('.progress-overlay');
+            if (existingOverlay) {
+                existingOverlay.remove();
+            }
+            
             if (!cell.owned) {
                 element.classList.add('available');
                 element.textContent = '+';
@@ -851,27 +907,43 @@
                 element.classList.add('extracting');
                 element.textContent = gameConfig.resources[cell.resourceType]?.symbol || '';
                 
+                // Create or update timer
                 const timer = element.querySelector('.timer') || document.createElement('div');
                 timer.className = 'timer';
                 if (!element.querySelector('.timer')) {
                     element.appendChild(timer);
                 }
                 
+                // Create progress overlay
+                const progressOverlay = document.createElement('div');
+                progressOverlay.className = 'progress-overlay';
+                
+                // Calculate progress
+                const totalTime = cell.extractionEndTime - cell.extractionStartTime;
+                const elapsed = Date.now() - cell.extractionStartTime;
+                const progress = Math.min(100, Math.max(0, (elapsed / totalTime) * 100));
+                
+                // Add near-completion effect
+                if (progress > 80) {
+                    progressOverlay.classList.add('near-completion');
+                }
+                
+                // Set progress height (rising from bottom)
+                progressOverlay.style.height = `${progress}%`;
+                element.appendChild(progressOverlay);
+                
+                // Update timer display
                 const remaining = Math.max(0, cell.extractionEndTime - Date.now());
                 const totalMinutes = Math.floor(remaining / 60000);
                 const seconds = Math.floor((remaining % 60000) / 1000);
                 const timeStr = `${totalMinutes}:${seconds.toString().padStart(2, '0')}`;
                 timer.textContent = timeStr;
                 
-                element.dataset.tooltip = `${cell.resourceType} - ${timeStr} remaining`;
+                element.dataset.tooltip = `${cell.resourceType} - ${timeStr} remaining (${Math.round(progress)}%)`;
             } else {
                 element.classList.add('owned');
                 element.textContent = '⚡';
                 element.dataset.tooltip = 'Owned cell - Ready for expedition';
-            }
-            
-            if (index === gameState.selectedCell) {
-                element.classList.add('selected');
             }
         }
 
@@ -913,10 +985,8 @@
                 return;
             }
             
-            // Default selection
-            gameState.selectedCell = index;
-            updateUI();
-            updateCellInfo();
+            // If we get here, the cell is owned but not doing anything - show a message
+            showNotification('Cell is ready for expedition. Purchase and deploy expeditions from the Buy tab!', 'info');
         }
 
         // Update cell info display
@@ -933,19 +1003,8 @@
                 return;
             }
             
-            if (gameState.selectedCell === null) {
-                cellInfo.textContent = 'Buy expeditions, then deploy from Resources tab';
-                return;
-            }
-            
-            const cell = gameState.cells[gameState.selectedCell];
-            if (cell.extractionStartTime) {
-                cellInfo.textContent = `Cell ${gameState.selectedCell + 1}: Extracting ${cell.resourceType}`;
-            } else if (cell.isReady) {
-                cellInfo.textContent = `Cell ${gameState.selectedCell + 1}: Ready to collect ${cell.resourceType}`;
-            } else {
-                cellInfo.textContent = `Cell ${gameState.selectedCell + 1}: Ready for expedition`;
-            }
+            // Default message
+            cellInfo.textContent = 'Buy expeditions, then deploy from Resources tab';
         }
 
         // Buy cell
@@ -1062,36 +1121,6 @@
             
             showNotification(`Collected ${resourceType}!`, 'success');
             checkLevelUp();
-            updateUI();
-            saveGameState();
-        }
-
-        // Apply booster
-        function applyBooster() {
-            if (gameState.selectedCell === null) {
-                showNotification('Please select a cell first!', 'warning');
-                return;
-            }
-            
-            // Show booster selection (simplified - use basic booster for now)
-            const boosterName = 'Basic Booster';
-            const boosterConfig = gameConfig.boosters[boosterName];
-            
-            if (gameState.level < boosterConfig.level) {
-                showNotification(`Level ${boosterConfig.level} required for this booster!`, 'error');
-                return;
-            }
-            
-            if (gameState.points < boosterConfig.cost) {
-                showNotification(`Not enough points! Need ${boosterConfig.cost} points.`, 'error');
-                return;
-            }
-            
-            gameState.points -= boosterConfig.cost;
-            gameState.activeBooster = boosterName;
-            gameState.boosterEndTime = Date.now() + boosterConfig.duration * 1000;
-            
-            showNotification(`${boosterName} activated!`, 'success');
             updateUI();
             saveGameState();
         }
@@ -1402,7 +1431,6 @@
         function updateActionButtons() {
             const buyBtn = document.getElementById('buyCell');
             const sellBtn = document.getElementById('sellResources');
-            const cancelBtn = document.getElementById('cancelSelection');
             
             // Buy cell button
             const canBuyCell = gameState.points >= 500 && gameState.ownedCells < gameState.maxCells;
@@ -1411,17 +1439,12 @@
             // Sell resources button
             const hasResources = Object.values(gameState.resources).some(amount => amount > 0);
             sellBtn.disabled = !hasResources;
-            
-            // Cancel selection button
-            const hasSelection = gameState.mode !== 'select' || gameState.selectedCell !== null;
-            cancelBtn.style.display = hasSelection ? 'flex' : 'none';
         }
 
         // Setup event listeners
         function setupEventListeners() {
             document.getElementById('buyCell').onclick = () => buyCell();
             document.getElementById('sellResources').onclick = sellResources;
-            document.getElementById('cancelSelection').onclick = cancelSelection;
             
             // Tab switching
             document.getElementById('buyTab').onclick = () => {
@@ -1448,6 +1471,7 @@
 
         // Game loop
         function startGameLoop() {
+            // Main game logic updates (slower)
             setInterval(() => {
                 const now = Date.now();
                 let updated = false;
@@ -1471,7 +1495,48 @@
                     updateUI();
                     saveGameState();
                 }
-            }, Math.max(100, Math.floor(1000 / gameState.debugSpeed))); // Faster updates with debug speed
+            }, Math.max(500, Math.floor(1000 / gameState.debugSpeed))); // Main logic updates
+            
+            // Animation updates (faster, for smooth progress bars)
+            setInterval(() => {
+                // Update only the progress bars for extracting cells
+                gameState.cells.forEach((cell, index) => {
+                    if (cell.extractionStartTime && !cell.isReady) {
+                        const cellElement = document.querySelector(`[data-index="${index}"]`);
+                        if (cellElement) {
+                            const progressOverlay = cellElement.querySelector('.progress-overlay');
+                            if (progressOverlay) {
+                                const totalTime = cell.extractionEndTime - cell.extractionStartTime;
+                                const elapsed = Date.now() - cell.extractionStartTime;
+                                const progress = Math.min(100, Math.max(0, (elapsed / totalTime) * 100));
+                                
+                                // Update progress height
+                                progressOverlay.style.height = `${progress}%`;
+                                
+                                // Update near-completion effect
+                                if (progress > 80) {
+                                    progressOverlay.classList.add('near-completion');
+                                } else {
+                                    progressOverlay.classList.remove('near-completion');
+                                }
+                                
+                                // Update timer text
+                                const timer = cellElement.querySelector('.timer');
+                                if (timer) {
+                                    const remaining = Math.max(0, cell.extractionEndTime - Date.now());
+                                    const totalMinutes = Math.floor(remaining / 60000);
+                                    const seconds = Math.floor((remaining % 60000) / 1000);
+                                    const timeStr = `${totalMinutes}:${seconds.toString().padStart(2, '0')}`;
+                                    timer.textContent = timeStr;
+                                    
+                                    // Update tooltip
+                                    cellElement.dataset.tooltip = `${cell.resourceType} - ${timeStr} remaining (${Math.round(progress)}%)`;
+                                }
+                            }
+                        }
+                    }
+                });
+            }, Math.max(100, Math.floor(500 / gameState.debugSpeed))); // Animation updates
         }
 
         // Show notification
@@ -1578,17 +1643,6 @@
             gameState.mode = 'booster';
             
             showNotification(`Selected ${boosterName}. Now click a cell to apply booster!`, 'success');
-            updateUI();
-        }
-
-        // Cancel current selection
-        function cancelSelection() {
-            gameState.selectedExpedition = null;
-            gameState.selectedBooster = null;
-            gameState.mode = 'select';
-            gameState.selectedCell = null;
-            
-            showNotification('Selection cancelled.', 'warning');
             updateUI();
         }
 
