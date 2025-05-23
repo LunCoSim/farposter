@@ -1,4 +1,4 @@
-# Lunar Explorer: Farcaster Game Design Specification
+🏭 Resource Inventory# Lunar Explorer: Farcaster Game Design Specification
 
 ## 1. Game Overview
 A resource extraction game on the Moon where players manage expeditions, extract resources, and expand their territory through a hexagonal grid system.
