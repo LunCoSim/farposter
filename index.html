@@ -183,6 +183,18 @@
             user-select: none;
         }
 
+        .hex-cell.booster-target {
+            border-color: #2196F3;
+            background: rgba(33, 150, 243, 0.2);
+            animation: boosterTargetPulse 2s ease-in-out infinite;
+        }
+
+        .hex-cell.booster-invalid {
+            border-color: #666;
+            background: rgba(102, 102, 102, 0.1);
+            cursor: not-allowed;
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
@@ -642,6 +654,70 @@
             color: white;
             cursor: pointer;
         }
+
+        /* Boost indicators */
+        .hex-cell.boosted {
+            border-color: #2196F3;
+            box-shadow: 0 0 15px rgba(33, 150, 243, 0.6);
+            animation: boostGlow 2s ease-in-out infinite;
+        }
+
+        .boost-indicator {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #2196F3;
+            color: white;
+            font-size: 8px;
+            padding: 2px 4px;
+            border-radius: 10px;
+            z-index: 10;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        .global-boost-indicator {
+            position: fixed;
+            top: 100px;
+            right: 20px;
+            background: rgba(255, 152, 0, 0.9);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 999;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            animation: boostPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes boostGlow {
+            0%, 100% { 
+                box-shadow: 0 0 15px rgba(33, 150, 243, 0.6);
+            }
+            50% { 
+                box-shadow: 0 0 25px rgba(33, 150, 243, 0.9);
+            }
+        }
+
+        @keyframes boostPulse {
+            0%, 100% { 
+                transform: scale(1);
+                opacity: 0.9;
+            }
+            50% { 
+                transform: scale(1.05);
+                opacity: 1;
+            }
+        }
+
+        @keyframes boosterTargetPulse {
+            0%, 100% { 
+                box-shadow: 0 0 10px rgba(33, 150, 243, 0.5);
+            }
+            50% { 
+                box-shadow: 0 0 20px rgba(33, 150, 243, 0.8);
+            }
+        }
     </style>
 </head>
 <body>
@@ -649,6 +725,8 @@
     <div class="loading" id="loading">
         <div class="spinner"></div>
     </div>
+
+
 
     <!-- Debug Panel -->
     <div class="debug-panel" id="debugPanel" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 8px; color: white; font-size: 12px; z-index: 1000; display: none;">
@@ -690,7 +768,7 @@
         </div>
         <div class="game-title">
             <h1>🌙 Farpost</h1>
-            <button onclick="resetGame()" class="reset-btn">🔄 Reset Game</button>
+            <!-- <button onclick="resetGame()" class="reset-btn">🔄 Reset Game</button> -->
         </div>
     </div>
 
@@ -740,8 +818,6 @@
             maxCells: 3,
             selectedExpedition: null,
             selectedBooster: null,
-            activeBooster: null,
-            boosterEndTime: null,
             resources: {
                 'Lunar Regolith': 0,
                 'Iron Ore': 0,
@@ -801,15 +877,15 @@
                 'Helium-3': { time: 24, cost: 300, value: 5000, xp: 180, level: 20, symbol: 'He-3' }
             },
             boosters: {
-                'Basic Booster': { cost: 100, multiplier: 2, level: 1, duration: 3600 },
-                'Advanced Booster': { cost: 250, multiplier: 3, level: 5, duration: 3600 },
-                'Elite Booster': { cost: 500, multiplier: 4, level: 10, duration: 3600 },
-                'Master Booster': { cost: 1000, multiplier: 5, level: 15, duration: 3600 },
-                'Ultimate Booster': { cost: 2000, multiplier: 10, level: 20, duration: 3600 }
+                'Basic Booster': { cost: 100, multiplier: 2, level: 1 },
+                'Advanced Booster': { cost: 250, multiplier: 3, level: 5 },
+                'Elite Booster': { cost: 500, multiplier: 4, level: 10 },
+                'Master Booster': { cost: 1000, multiplier: 5, level: 15 },
+                'Ultimate Booster': { cost: 2000, multiplier: 10, level: 20 }
             },
-            levelThresholds: [0, 500, 1200, 2200, 3500, 5200, 7300, 9800, 12800, 16400, 20600],
+            levelThresholds: [0, 300, 1200, 2200, 3500, 5200, 7300, 9800, 12800, 16400, 20600],
             cellUnlocks: {
-                1: 3, 5: 5, 10: 8, 15: 12, 20: 16, 25: 24, 30: 32, 35: 48, 40: 64
+                1: 3, 2: 4, 3: 5, 10: 8, 15: 12, 20: 16, 25: 24, 30: 32, 35: 48, 40: 64
             }
         };
 
@@ -848,10 +924,31 @@
             const index = parseInt(element.dataset.index);
             element.className = 'hex-cell tooltip';
             
-            // Clear any existing overlays
+            // Clear any existing overlays and indicators
             const existingOverlay = element.querySelector('.progress-overlay');
             if (existingOverlay) {
                 existingOverlay.remove();
+            }
+            const existingBoostIndicator = element.querySelector('.boost-indicator');
+            if (existingBoostIndicator) {
+                existingBoostIndicator.remove();
+            }
+            
+            // Check if cell has specific boost applied
+            const cellHasBoost = cell.boostMultiplier && cell.boostMultiplier > 1;
+            
+            // Add booster mode visual indicators
+            if (gameState.mode === 'booster' && gameState.selectedBooster && cell.owned) {
+                if (cell.extractionStartTime && !cell.isReady) {
+                    // Check if cell already has a booster applied
+                    if (cell.boostMultiplier) {
+                        element.classList.add('booster-invalid');
+                    } else {
+                        element.classList.add('booster-target');
+                    }
+                } else {
+                    element.classList.add('booster-invalid');
+                }
             }
             
             if (!cell.owned) {
@@ -872,10 +969,30 @@
             } else if (cell.isReady) {
                 element.classList.add('ready');
                 element.textContent = gameConfig.resources[cell.resourceType]?.symbol || '';
-                element.dataset.tooltip = `${cell.resourceType} - Ready to collect!`;
+                let tooltip = `${cell.resourceType} - Ready to collect!`;
+                
+                // Update tooltip for booster mode
+                if (gameState.mode === 'booster' && gameState.selectedBooster) {
+                    if (cell.boostMultiplier) {
+                        tooltip += ` (Already has ${cell.boosterName} applied)`;
+                    } else {
+                        tooltip += ' (Click to speed up extraction)';
+                    }
+                }
+                
+                element.dataset.tooltip = tooltip;
             } else if (cell.extractionStartTime) {
                 element.classList.add('extracting');
                 element.textContent = gameConfig.resources[cell.resourceType]?.symbol || '';
+                
+                // Add boost indicator if this cell is boosted
+                if (cellHasBoost) {
+                    element.classList.add('boosted');
+                    const boostIndicator = document.createElement('div');
+                    boostIndicator.className = 'boost-indicator';
+                    boostIndicator.textContent = `${cell.boostMultiplier}x`;
+                    element.appendChild(boostIndicator);
+                }
                 
                 // Create or update timer
                 const timer = element.querySelector('.timer') || document.createElement('div');
@@ -909,11 +1026,33 @@
                 const timeStr = `${totalMinutes}:${seconds.toString().padStart(2, '0')}`;
                 timer.textContent = timeStr;
                 
-                element.dataset.tooltip = `${cell.resourceType} - ${timeStr} remaining (${Math.round(progress)}%)`;
+                let tooltipText = `${cell.resourceType} - ${timeStr} remaining (${Math.round(progress)}%)`;
+                if (cellHasBoost) {
+                    const multiplier = cell.boostMultiplier;
+                    tooltipText += ` - ${multiplier}x boost active`;
+                }
+                
+                // Update tooltip for booster mode
+                if (gameState.mode === 'booster' && gameState.selectedBooster) {
+                    if (cell.boostMultiplier) {
+                        tooltipText += ` (Already has ${cell.boosterName} applied)`;
+                    } else {
+                        tooltipText += ' (Click to speed up extraction)';
+                    }
+                }
+                
+                element.dataset.tooltip = tooltipText;
             } else {
                 element.classList.add('owned');
                 element.textContent = '⚡';
-                element.dataset.tooltip = 'Owned cell - Ready for expedition';
+                let tooltip = 'Owned cell - Ready for expedition';
+                
+                // Update tooltip for booster mode
+                if (gameState.mode === 'booster' && gameState.selectedBooster) {
+                    tooltip = `Cannot apply booster to empty cell (need extracting cell)`;
+                }
+                
+                element.dataset.tooltip = tooltip;
             }
         }
 
@@ -974,7 +1113,7 @@
             }
             
             if (gameState.mode === 'booster' && gameState.selectedBooster) {
-                cellInfo.textContent = `Apply ${gameState.selectedBooster} • Right-click or ESC to deselect`;
+                cellInfo.textContent = `Click extracting cells to speed up • Right-click or ESC to deselect`;
                 return;
             }
             
@@ -1046,22 +1185,12 @@
             // Apply debug speed multiplier
             extractionTime = Math.floor(extractionTime / gameState.debugSpeed);
             
-            // Apply booster if active
-            if (gameState.activeBooster && Date.now() < gameState.boosterEndTime) {
-                const boosterConfig = gameConfig.boosters[gameState.activeBooster];
-                extractionTime = Math.floor(extractionTime / boosterConfig.multiplier);
-            }
-            
             // Deploy expedition (use inventory, no cost)
             gameState.expeditions[gameState.selectedExpedition]--;
             cell.resourceType = gameState.selectedExpedition;
             cell.extractionStartTime = Date.now();
             cell.extractionEndTime = Date.now() + extractionTime;
             cell.isReady = false;
-            
-            // Keep the selection active (don't reset mode and selection)
-            // gameState.mode = 'select';  // Commented out to keep selection active
-            // gameState.selectedExpedition = null;  // Commented out to keep selection active
             
             const remaining = gameState.expeditions[gameState.selectedExpedition];
             if (remaining === 0) {
@@ -1097,11 +1226,14 @@
             gameState.resources[resourceType]++;
             gameState.xp += resourceConfig.xp;
             
-            // Reset cell
+            // Reset cell (including booster properties)
             cell.resourceType = null;
             cell.extractionStartTime = null;
             cell.extractionEndTime = null;
             cell.isReady = false;
+            cell.boostMultiplier = null;
+            cell.boosterAppliedTime = null;
+            cell.boosterName = null;
             
             showNotification(`Collected ${resourceType}!`, 'success');
             checkLevelUp();
@@ -1267,7 +1399,7 @@
                     item.innerHTML = `
                         <div class="booster-info">
                             <div class="booster-name">${boosterName}</div>
-                            <div class="booster-effect">${boosterConfig.multiplier}x speed - 1 hour</div>
+                            <div class="booster-effect">${boosterConfig.multiplier}x speed - per extraction</div>
                             ${!hasBoost ? '<div class="booster-effect">No boosters owned</div>' : ''}
                         </div>
                         <div class="booster-cost">${amount}</div>
@@ -1341,7 +1473,7 @@
                     item.innerHTML = `
                         <div class="booster-info">
                             <div class="booster-name">${boosterName}</div>
-                            <div class="booster-effect">${config.multiplier}x speed - 1 hour</div>
+                            <div class="booster-effect">${config.multiplier}x speed - per extraction</div>
                             ${!levelOk ? `<div class="booster-effect" style="color: #f44336;">Requires Level ${config.level}</div>` : ''}
                         </div>
                         <div class="booster-cost">${config.cost}</div>
@@ -1481,13 +1613,6 @@
                     }
                 });
                 
-                // Check booster expiration
-                if (gameState.activeBooster && now >= gameState.boosterEndTime) {
-                    gameState.activeBooster = null;
-                    gameState.boosterEndTime = null;
-                    updated = true;
-                }
-                
                 if (updated) {
                     updateUI();
                     saveGameState();
@@ -1608,36 +1733,39 @@
             const boosterConfig = gameConfig.boosters[gameState.selectedBooster];
             const cell = gameState.cells[index];
             
-            // If cell is extracting, apply booster to it specifically
-            if (cell.extractionStartTime && !cell.isReady) {
-                // Calculate remaining time and apply booster effect
-                const remaining = cell.extractionEndTime - Date.now();
-                const newEndTime = Date.now() + Math.floor(remaining / boosterConfig.multiplier);
-                cell.extractionEndTime = newEndTime;
-                
-                // Use booster from inventory
-                gameState.boosters[gameState.selectedBooster]--;
-                
-                // Reset mode and selection
-                gameState.mode = 'select';
-                gameState.selectedBooster = null;
-                
-                showNotification(`${gameState.selectedBooster} applied to extracting cell! Extraction time reduced.`, 'success');
-                updateUI();
-                saveGameState();
+            // Only allow boosters on extracting cells
+            if (!cell.extractionStartTime || cell.isReady) {
+                showNotification('Can only apply booster to extracting cells!', 'error');
                 return;
             }
             
-            // Apply booster globally (affects all future expeditions, use inventory)
+            // Check if cell already has a booster applied
+            if (cell.boostMultiplier) {
+                showNotification(`Cell already has ${cell.boosterName} applied!`, 'warning');
+                return;
+            }
+            
+            // Apply booster to this specific extracting cell
+            const remaining = cell.extractionEndTime - Date.now();
+            const newEndTime = Date.now() + Math.floor(remaining / boosterConfig.multiplier);
+            cell.extractionEndTime = newEndTime;
+            cell.boostMultiplier = boosterConfig.multiplier;
+            cell.boosterAppliedTime = Date.now();
+            cell.boosterName = gameState.selectedBooster;
+            
+            // Use booster from inventory
             gameState.boosters[gameState.selectedBooster]--;
-            gameState.activeBooster = gameState.selectedBooster;
-            gameState.boosterEndTime = Date.now() + boosterConfig.duration * 1000;
             
             // Reset mode and selection
             gameState.mode = 'select';
             gameState.selectedBooster = null;
             
-            showNotification(`${gameState.activeBooster} activated for 1 hour!`, 'success');
+            // Check if extraction should be ready now
+            if (Date.now() >= cell.extractionEndTime) {
+                cell.isReady = true;
+            }
+            
+            showNotification(`${gameState.selectedBooster} applied! Extraction time reduced by ${boosterConfig.multiplier}x.`, 'success');
             updateUI();
             saveGameState();
         }
@@ -1756,8 +1884,6 @@
                     maxCells: 3,
                     selectedExpedition: null,
                     selectedBooster: null,
-                    activeBooster: null,
-                    boosterEndTime: null,
                     resources: {
                         'Lunar Regolith': 0,
                         'Iron Ore': 0,
@@ -1814,8 +1940,35 @@
         function updateDebugSpeed() {
             const slider = document.getElementById('speedSlider');
             const display = document.getElementById('speedDisplay');
+            const oldSpeed = gameState.debugSpeed;
             gameState.debugSpeed = parseInt(slider.value);
             display.textContent = `${gameState.debugSpeed}x`;
+            
+            // Recalculate ongoing extractions with new speed
+            if (oldSpeed !== gameState.debugSpeed) {
+                gameState.cells.forEach(cell => {
+                    if (cell.extractionStartTime && !cell.isReady) {
+                        const elapsed = Date.now() - cell.extractionStartTime;
+                        const originalDuration = cell.extractionEndTime - cell.extractionStartTime;
+                        
+                        // Calculate what the original duration should have been without old speed
+                        const baseOriginalDuration = originalDuration * oldSpeed;
+                        
+                        // Apply new speed to the base duration
+                        const newDuration = Math.floor(baseOriginalDuration / gameState.debugSpeed);
+                        
+                        // Set new end time
+                        cell.extractionEndTime = cell.extractionStartTime + newDuration;
+                        
+                        // If the extraction should have already finished, mark as ready
+                        if (Date.now() >= cell.extractionEndTime) {
+                            cell.isReady = true;
+                        }
+                    }
+                });
+                updateUI();
+            }
+            
             saveGameState();
         }
 

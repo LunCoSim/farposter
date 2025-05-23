@@ -27,15 +27,15 @@ const config = {
       'Helium-3': { time: 24, cost: 300, value: 5000, xp: 180, level: 20, symbol: 'He-3' }
     },
     boosters: {
-      'Basic Booster': { cost: 100, multiplier: 2, level: 1, duration: 3600 },
-      'Advanced Booster': { cost: 250, multiplier: 3, level: 5, duration: 3600 },
-      'Elite Booster': { cost: 500, multiplier: 4, level: 10, duration: 3600 },
-      'Master Booster': { cost: 1000, multiplier: 5, level: 15, duration: 3600 },
-      'Ultimate Booster': { cost: 2000, multiplier: 10, level: 20, duration: 3600 }
+      'Basic Booster': { cost: 100, multiplier: 2, level: 1, duration: 7200 },
+      'Advanced Booster': { cost: 250, multiplier: 3, level: 5, duration: 7200 },
+      'Elite Booster': { cost: 500, multiplier: 4, level: 10, duration: 7200 },
+      'Master Booster': { cost: 1000, multiplier: 5, level: 15, duration: 7200 },
+      'Ultimate Booster': { cost: 2000, multiplier: 10, level: 20, duration: 7200 }
     },
-    levelThresholds: [0, 500, 1200, 2200, 3500, 5200, 7300, 9800, 12800, 16400, 20600],
+    levelThresholds: [0, 300, 1200, 2200, 3500, 5200, 7300, 9800, 12800, 16400, 20600],
     cellUnlocks: {
-      1: 3, 5: 5, 10: 8, 15: 12, 20: 16, 25: 24, 30: 32, 35: 48, 40: 64
+      1: 3, 2: 4, 3: 5, 10: 8, 15: 12, 20: 16, 25: 24, 30: 32, 35: 48, 40: 64
     }
   }
 };
