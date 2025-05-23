@@ -129,7 +129,7 @@ Example Usage:
 
 ## 5. Technical Requirements
 
-### 5.1 Smart Contract Requirements
+### 5.1 Backend requirements
 1. Resource Management
    - Resource definitions
    - Extraction tracking
