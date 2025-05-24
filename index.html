@@ -210,6 +210,255 @@
             50% { box-shadow: 0 0 20px rgba(255, 152, 0, 0.8); }
         }
 
+        /* Tutorial Modal */
+        .tutorial-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .tutorial-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #4CAF50;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .tutorial-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .tutorial-header h3 {
+            color: #4CAF50;
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .tutorial-skip {
+            background: #ff4444;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+
+        .tutorial-skip:hover {
+            background: #ff6666;
+        }
+
+        .tutorial-description {
+            color: #fff;
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        }
+
+        .tutorial-controls {
+            display: flex;
+            justify-content: center;
+        }
+
+        .tutorial-btn {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .tutorial-btn:hover {
+            background: #45a049;
+        }
+
+        /* Achievements Panel */
+        .achievements-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1500;
+            backdrop-filter: blur(3px);
+        }
+
+        .achievements-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 2px solid #FFD700;
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .achievements-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+        }
+
+        .achievements-header h3 {
+            color: #FFD700;
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            transition: color 0.3s;
+        }
+
+        .close-btn:hover {
+            color: #ff4444;
+        }
+
+        .achievements-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .achievement-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            border-left: 4px solid #666;
+            transition: all 0.3s;
+        }
+
+        .achievement-item.completed {
+            border-left-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .achievement-title {
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+
+        .achievement-description {
+            color: #ccc;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .achievement-reward {
+            color: #FFD700;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* Achievements button in header */
+        .achievements-btn {
+            background: #FFD700;
+            border: none;
+            color: #000;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .achievements-btn:hover {
+            background: #FFC107;
+        }
+
+        /* Tutorial Highlighting */
+        .tutorial-highlight {
+            position: relative;
+            z-index: 1000;
+            box-shadow: 0 0 0 4px #4CAF50, 0 0 0 8px rgba(76, 175, 80, 0.3) !important;
+            border-radius: 8px !important;
+            animation: tutorialPulse 2s ease-in-out infinite;
+        }
+
+        .tutorial-highlight::before {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            background: rgba(76, 175, 80, 0.1);
+            border-radius: 12px;
+            z-index: -1;
+            animation: tutorialGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes tutorialPulse {
+            0%, 100% { 
+                box-shadow: 0 0 0 4px #4CAF50, 0 0 0 8px rgba(76, 175, 80, 0.3);
+            }
+            50% { 
+                box-shadow: 0 0 0 6px #4CAF50, 0 0 0 12px rgba(76, 175, 80, 0.5);
+            }
+        }
+
+        @keyframes tutorialGlow {
+            0%, 100% { 
+                background: rgba(76, 175, 80, 0.1);
+            }
+            50% { 
+                background: rgba(76, 175, 80, 0.2);
+            }
+        }
+
+        /* Tutorial pointer arrow */
+        .tutorial-pointer {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-bottom: 20px solid #4CAF50;
+            z-index: 1500;
+            animation: tutorialBounce 1s ease-in-out infinite;
+        }
+
+        @keyframes tutorialBounce {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
         /* Timer overlay */
         .timer {
             position: absolute;
@@ -768,7 +1017,10 @@
         </div>
         <div class="game-title">
             <h1>🌙 Farpost</h1>
-            <!-- <button onclick="resetGame()" class="reset-btn">🔄 Reset Game</button> -->
+            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                <button onclick="showAchievements()" class="achievements-btn">🏆 Achievements</button>
+                <!-- <button onclick="resetGame()" class="reset-btn">🔄 Reset Game</button> -->
+            </div>
         </div>
     </div>
 
@@ -804,6 +1056,35 @@
             
             <div id="tabContent">
                 <!-- Tab content will be dynamically generated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Modal -->
+    <div id="tutorialModal" class="tutorial-modal" style="display: none;">
+        <div class="tutorial-content">
+            <div class="tutorial-header">
+                <h3 id="tutorialTitle">Tutorial Step</h3>
+                <button onclick="skipTutorial()" class="tutorial-skip">Skip Tutorial</button>
+            </div>
+            <div id="tutorialDescription" class="tutorial-description">
+                Follow the instructions to learn the game.
+            </div>
+            <div class="tutorial-controls">
+                <button onclick="hideTutorialModal()" class="tutorial-btn tutorial-continue">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievements Panel -->
+    <div id="achievementsPanel" class="achievements-panel" style="display: none;">
+        <div class="achievements-content">
+            <div class="achievements-header">
+                <h3>🏆 Achievements</h3>
+                <button onclick="hideAchievements()" class="close-btn">✕</button>
+            </div>
+            <div id="achievementsList" class="achievements-list">
+                <!-- Achievements will be populated here -->
             </div>
         </div>
     </div>
@@ -847,7 +1128,8 @@
                 'Advanced Booster': 0,
                 'Elite Booster': 0,
                 'Master Booster': 0,
-                'Ultimate Booster': 0
+                'Ultimate Booster': 0,
+                'Instant Extract': 0
             },
             cells: Array(18).fill(null).map((_, index) => ({
                 id: index,
@@ -859,7 +1141,21 @@
             })),
             activeTab: 'buy',
             mode: 'select', // 'select', 'deploy', 'booster'
-            debugSpeed: 1
+            debugSpeed: 1,
+            tutorial: {
+                isActive: false,
+                step: 0,
+                completed: false,
+                initialSetup: false
+            },
+            achievements: {
+                'first_expedition': { completed: false, title: 'First Expedition', description: 'Deploy your first expedition', reward: 100 },
+                'first_boost': { completed: false, title: 'Speed Demon', description: 'Use your first booster', reward: 50 },
+                'first_collect': { completed: false, title: 'Resource Collector', description: 'Collect your first resource', reward: 75 },
+                'first_sell': { completed: false, title: 'Merchant', description: 'Sell your first resource', reward: 100 },
+                'second_expedition': { completed: false, title: 'Expanding Operations', description: 'Buy a second expedition', reward: 150 },
+                'tutorial_complete': { completed: false, title: 'Graduate', description: 'Complete the tutorial', reward: 200 }
+            }
         };
 
         // Game configuration
@@ -881,7 +1177,8 @@
                 'Advanced Booster': { cost: 250, multiplier: 3, level: 5 },
                 'Elite Booster': { cost: 500, multiplier: 4, level: 10 },
                 'Master Booster': { cost: 1000, multiplier: 5, level: 15 },
-                'Ultimate Booster': { cost: 2000, multiplier: 10, level: 20 }
+                'Ultimate Booster': { cost: 2000, multiplier: 10, level: 20 },
+                'Instant Extract': { cost: 0, multiplier: 'instant', level: 1 }
             },
             levelThresholds: [0, 300, 1200, 2200, 3500, 5200, 7300, 9800, 12800, 16400, 20600],
             cellUnlocks: {
@@ -892,6 +1189,12 @@
         // Initialize game
         function initGame() {
             loadGameState();
+            
+            // Check for tutorial setup
+            if (!gameState.tutorial.initialSetup && !gameState.tutorial.completed) {
+                setupTutorial();
+            }
+            
             generateGrid();
             updateUI();
             setupEventListeners();
@@ -901,6 +1204,201 @@
             setTimeout(() => {
                 document.getElementById('loading').classList.remove('show');
             }, 500);
+        }
+
+        // Setup initial tutorial state
+        function setupTutorial() {
+            gameState.tutorial.isActive = true;
+            gameState.tutorial.step = 0;
+            gameState.tutorial.initialSetup = true;
+            gameState.points = 100; // Enough to buy second expedition later
+            gameState.expeditions['Lunar Regolith'] = 1; // Start with one expedition
+            gameState.boosters['Instant Extract'] = 1; // Start with one instant booster
+            
+            showNotification('Welcome to Farpost! Let\'s begin the tutorial.', 'success');
+            setTimeout(() => showTutorialStep(), 1000);
+        }
+
+        // Tutorial steps
+        const tutorialSteps = [
+            {
+                title: "Deploy Your First Expedition",
+                description: "First, click on the 'Lunar Regolith' expedition in the Deploy section to select it.",
+                highlightSelector: ".resource-item:has(.resource-name:contains('Lunar Regolith'))",
+                highlightAction: "select_expedition",
+                checkComplete: () => gameState.selectedExpedition === 'Lunar Regolith'
+            },
+            {
+                title: "Deploy to Cell",
+                description: "Now click on one of the owned cells (the green ones in the middle) to deploy your expedition.",
+                highlightSelector: ".hex-cell.owned",
+                highlightAction: "deploy_expedition",
+                checkComplete: () => gameState.cells.some(cell => cell.extractionStartTime && !cell.isReady)
+            },
+            {
+                title: "Use Instant Extract Booster",
+                description: "Click on 'Instant Extract' booster in the Apply Boosters section to select it.",
+                highlightSelector: ".booster-item:has(.booster-name:contains('Instant Extract'))",
+                highlightAction: "select_booster",
+                checkComplete: () => gameState.selectedBooster === 'Instant Extract'
+            },
+            {
+                title: "Apply Booster to Cell",
+                description: "Now click on the extracting cell (yellow border) to instantly complete the extraction.",
+                highlightSelector: ".hex-cell.extracting",
+                highlightAction: "apply_booster",
+                checkComplete: () => gameState.cells.some(cell => cell.isReady)
+            },
+            {
+                title: "Collect Resources",
+                description: "Click on the glowing orange cell to collect your first resource!",
+                highlightSelector: ".hex-cell.ready",
+                highlightAction: "collect_resource",
+                checkComplete: () => gameState.resources['Lunar Regolith'] > 0
+            },
+            {
+                title: "Sell Resources",
+                description: "Switch to the 'Sell' tab first, then click 'Sell All' to convert resources to points.",
+                highlightSelector: "#sellTab",
+                highlightAction: "switch_tab",
+                nextHighlight: ".resource-item:has(.resource-name:contains('Sell All'))",
+                checkComplete: () => gameState.points > 100 && gameState.resources['Lunar Regolith'] === 0
+            },
+            {
+                title: "Buy Second Expedition",
+                description: "Switch to 'Buy' tab and purchase another 'Lunar Regolith' expedition.",
+                highlightSelector: "#buyTab",
+                highlightAction: "switch_tab",
+                nextHighlight: ".resource-item:has(.resource-name:contains('Lunar Regolith'))",
+                checkComplete: () => gameState.expeditions['Lunar Regolith'] >= 1
+            },
+            {
+                title: "Tutorial Complete!",
+                description: "Congratulations! You've learned the basics of Farpost. Continue exploring and expanding your lunar operation!",
+                highlightSelector: null,
+                checkComplete: () => true // This step completes the tutorial
+            }
+        ];
+
+        // Show tutorial step
+        function showTutorialStep() {
+            if (!gameState.tutorial.isActive) return;
+            
+            const step = tutorialSteps[gameState.tutorial.step];
+            if (!step) {
+                completeTutorial();
+                return;
+            }
+            
+            showTutorialModal(step.title, step.description);
+        }
+
+        // Check tutorial progress
+        function checkTutorialProgress() {
+            if (!gameState.tutorial.isActive) return;
+            
+            const step = tutorialSteps[gameState.tutorial.step];
+            if (step && step.checkComplete()) {
+                gameState.tutorial.step++;
+                
+                if (gameState.tutorial.step < tutorialSteps.length) {
+                    setTimeout(() => {
+                        hideTutorialModal();
+                        setTimeout(() => showTutorialStep(), 500);
+                    }, 1000);
+                } else {
+                    completeTutorial();
+                }
+            }
+        }
+
+        // Complete tutorial
+        function completeTutorial() {
+            gameState.tutorial.isActive = false;
+            gameState.tutorial.completed = true;
+            
+            unlockAchievement('tutorial_complete');
+            showNotification('Tutorial completed! You\'re now ready to explore Farpost on your own!', 'success');
+            hideTutorialModal();
+            saveGameState();
+        }
+
+        // Achievement system
+        function unlockAchievement(achievementId) {
+            const achievement = gameState.achievements[achievementId];
+            if (!achievement || achievement.completed) return;
+            
+            achievement.completed = true;
+            gameState.points += achievement.reward;
+            
+            showNotification(`🏆 Achievement Unlocked: ${achievement.title} (+${achievement.reward} points)`, 'success');
+            saveGameState();
+        }
+
+        // Check achievements
+        function checkAchievements() {
+            // Check first expedition
+            if (!gameState.achievements.first_expedition.completed && 
+                gameState.cells.some(cell => cell.extractionStartTime)) {
+                unlockAchievement('first_expedition');
+            }
+            
+            // Check first collect
+            if (!gameState.achievements.first_collect.completed && 
+                Object.values(gameState.resources).some(amount => amount > 0)) {
+                unlockAchievement('first_collect');
+            }
+            
+            // Check first sell - will be triggered in sell function
+            
+            // Check second expedition purchase - will be triggered in purchase function
+        }
+
+        // Tutorial modal functions
+        function showTutorialModal(title, description) {
+            document.getElementById('tutorialTitle').textContent = title;
+            document.getElementById('tutorialDescription').textContent = description;
+            document.getElementById('tutorialModal').style.display = 'flex';
+        }
+
+        function hideTutorialModal() {
+            document.getElementById('tutorialModal').style.display = 'none';
+        }
+
+        function skipTutorial() {
+            if (confirm('Are you sure you want to skip the tutorial? You can restart later by resetting the game.')) {
+                gameState.tutorial.isActive = false;
+                gameState.tutorial.completed = true;
+                hideTutorialModal();
+                saveGameState();
+                showNotification('Tutorial skipped. Welcome to Farpost!', 'info');
+            }
+        }
+
+        // Achievements modal functions
+        function showAchievements() {
+            updateAchievementsList();
+            document.getElementById('achievementsPanel').style.display = 'flex';
+        }
+
+        function hideAchievements() {
+            document.getElementById('achievementsPanel').style.display = 'none';
+        }
+
+        function updateAchievementsList() {
+            const achievementsList = document.getElementById('achievementsList');
+            achievementsList.innerHTML = '';
+            
+            Object.entries(gameState.achievements).forEach(([id, achievement]) => {
+                const item = document.createElement('div');
+                item.className = `achievement-item ${achievement.completed ? 'completed' : ''}`;
+                item.innerHTML = `
+                    <div class="achievement-title">${achievement.completed ? '✅' : '⬜'} ${achievement.title}</div>
+                    <div class="achievement-description">${achievement.description}</div>
+                    <div class="achievement-reward">Reward: ${achievement.reward} points</div>
+                `;
+                achievementsList.appendChild(item);
+            });
         }
 
         // Generate hexagonal grid
@@ -1202,6 +1700,10 @@
                 showNotification(`Deployed ${cell.resourceType} expedition! (${remaining} remaining)`, 'success');
             }
             
+            // Check achievements and tutorial
+            checkAchievements();
+            checkTutorialProgress();
+            
             updateUI();
             saveGameState();
         }
@@ -1237,6 +1739,11 @@
             
             showNotification(`Collected ${resourceType}!`, 'success');
             checkLevelUp();
+            
+            // Check achievements and tutorial
+            checkAchievements();
+            checkTutorialProgress();
+            
             updateUI();
             saveGameState();
         }
@@ -1264,7 +1771,15 @@
             gameState.xp += Math.floor(totalValue * 0.05); // 5% of sale value as XP
             
             showNotification(`Sold ${soldItems} resources for ${totalValue} points!`, 'success');
+            
+            // Check first sell achievement
+            if (!gameState.achievements.first_sell.completed) {
+                unlockAchievement('first_sell');
+            }
+            
             checkLevelUp();
+            checkTutorialProgress();
+            
             updateUI();
             saveGameState();
         }
@@ -1396,10 +1911,15 @@
                     
                     const item = document.createElement('div');
                     item.className = `booster-item ${isSelected ? 'selected' : ''} ${!hasBoost ? 'disabled' : ''}`;
+                    
+                    const effectText = boosterName === 'Instant Extract' 
+                        ? 'Instantly completes extraction'
+                        : `${boosterConfig.multiplier}x speed - per extraction`;
+                    
                     item.innerHTML = `
                         <div class="booster-info">
                             <div class="booster-name">${boosterName}</div>
-                            <div class="booster-effect">${boosterConfig.multiplier}x speed - per extraction</div>
+                            <div class="booster-effect">${effectText}</div>
                             ${!hasBoost ? '<div class="booster-effect">No boosters owned</div>' : ''}
                         </div>
                         <div class="booster-cost">${amount}</div>
@@ -1464,6 +1984,9 @@
                 tabContent.appendChild(boosterSection);
                 
                 Object.entries(gameConfig.boosters).forEach(([boosterName, config]) => {
+                    // Skip Instant Extract boosters in buy tab
+                    if (boosterName === 'Instant Extract') return;
+                    
                     const canAfford = gameState.points >= config.cost;
                     const levelOk = gameState.level >= config.level;
                     const isDisabled = !canAfford || !levelOk;
@@ -1511,7 +2034,22 @@
                     }
                 });
                 
-                if (!hasResources) {
+                if (hasResources) {
+                    // Add sell all button
+                    const sellAllButton = document.createElement('div');
+                    sellAllButton.className = 'resource-item';
+                    sellAllButton.style.background = 'rgba(76, 175, 80, 0.2)';
+                    sellAllButton.style.borderLeft = '4px solid #4CAF50';
+                    sellAllButton.innerHTML = `
+                        <div>
+                            <div class="resource-name">💰 Sell All Resources</div>
+                            <div class="resource-value">Convert all resources to points</div>
+                        </div>
+                        <div class="resource-amount">Sell All</div>
+                    `;
+                    sellAllButton.onclick = () => sellResources();
+                    tabContent.appendChild(sellAllButton);
+                } else {
                     const noResources = document.createElement('div');
                     noResources.className = 'resource-item disabled';
                     noResources.innerHTML = `
@@ -1719,6 +2257,32 @@
                 gameState.activeTab = gameState.activeTab || 'buy';
                 gameState.debugSpeed = gameState.debugSpeed || 1;
                 
+                // Initialize tutorial and achievements if missing
+                if (!gameState.tutorial) {
+                    gameState.tutorial = {
+                        isActive: false,
+                        step: 0,
+                        completed: false,
+                        initialSetup: false
+                    };
+                }
+                
+                if (!gameState.achievements) {
+                    gameState.achievements = {
+                        'first_expedition': { completed: false, title: 'First Expedition', description: 'Deploy your first expedition', reward: 100 },
+                        'first_boost': { completed: false, title: 'Speed Demon', description: 'Use your first booster', reward: 50 },
+                        'first_collect': { completed: false, title: 'Resource Collector', description: 'Collect your first resource', reward: 75 },
+                        'first_sell': { completed: false, title: 'Merchant', description: 'Sell your first resource', reward: 100 },
+                        'second_expedition': { completed: false, title: 'Expanding Operations', description: 'Buy a second expedition', reward: 150 },
+                        'tutorial_complete': { completed: false, title: 'Graduate', description: 'Complete the tutorial', reward: 200 }
+                    };
+                }
+                
+                // Initialize Instant Extract booster if missing
+                if (!gameState.boosters['Instant Extract']) {
+                    gameState.boosters['Instant Extract'] = 0;
+                }
+                
                 console.log('Game state loaded:', gameState);
             }
         }
@@ -1739,13 +2303,40 @@
                 return;
             }
             
+            // Handle instant extract booster
+            if (gameState.selectedBooster === 'Instant Extract') {
+                // Instantly complete the extraction
+                cell.extractionEndTime = Date.now();
+                cell.isReady = true;
+                
+                // Use booster from inventory
+                gameState.boosters[gameState.selectedBooster]--;
+                
+                // Reset mode and selection
+                gameState.mode = 'select';
+                gameState.selectedBooster = null;
+                
+                // Unlock achievement for first booster use
+                if (!gameState.achievements.first_boost.completed) {
+                    unlockAchievement('first_boost');
+                }
+                
+                showNotification(`Instant Extract applied! Resource ready for collection!`, 'success');
+                updateUI();
+                saveGameState();
+                
+                // Check tutorial progress
+                checkTutorialProgress();
+                return;
+            }
+            
             // Check if cell already has a booster applied
             if (cell.boostMultiplier) {
                 showNotification(`Cell already has ${cell.boosterName} applied!`, 'warning');
                 return;
             }
             
-            // Apply booster to this specific extracting cell
+            // Apply regular booster to this specific extracting cell
             const remaining = cell.extractionEndTime - Date.now();
             const newEndTime = Date.now() + Math.floor(remaining / boosterConfig.multiplier);
             cell.extractionEndTime = newEndTime;
@@ -1765,9 +2356,17 @@
                 cell.isReady = true;
             }
             
+            // Unlock achievement for first booster use
+            if (!gameState.achievements.first_boost.completed) {
+                unlockAchievement('first_boost');
+            }
+            
             showNotification(`${gameState.selectedBooster} applied! Extraction time reduced by ${boosterConfig.multiplier}x.`, 'success');
             updateUI();
             saveGameState();
+            
+            // Check tutorial progress
+            checkTutorialProgress();
         }
 
         // Select booster for application
@@ -1813,6 +2412,15 @@
             gameState.expeditions[resourceType] = (gameState.expeditions[resourceType] || 0) + 1;
             
             showNotification(`Purchased ${resourceType} expedition! (Owned: ${gameState.expeditions[resourceType]})`, 'success');
+            
+            // Check second expedition achievement
+            const totalExpeditions = Object.values(gameState.expeditions).reduce((sum, amount) => sum + amount, 0);
+            if (totalExpeditions >= 2 && !gameState.achievements.second_expedition.completed) {
+                unlockAchievement('second_expedition');
+            }
+            
+            checkTutorialProgress();
+            
             console.log('Expedition purchased:', resourceType, 'Total owned:', gameState.expeditions[resourceType]);
             updateUI();
             saveGameState();
@@ -1843,6 +2451,12 @@
         // Purchase booster
         function purchaseBooster(boosterName) {
             const boosterConfig = gameConfig.boosters[boosterName];
+            
+            // Instant Extract boosters cannot be purchased
+            if (boosterName === 'Instant Extract') {
+                showNotification('Instant Extract boosters cannot be purchased!', 'error');
+                return;
+            }
             
             if (gameState.level < boosterConfig.level) {
                 showNotification(`Level ${boosterConfig.level} required for ${boosterName}!`, 'error');
