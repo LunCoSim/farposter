@@ -223,6 +223,14 @@
             justify-content: center;
             z-index: 2000;
             backdrop-filter: blur(5px);
+            opacity: 0;
+            transform: scale(0.9);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .tutorial-modal.show {
+            opacity: 1;
+            transform: scale(1);
         }
 
         .tutorial-content {
@@ -234,6 +242,12 @@
             width: 90%;
             text-align: center;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transform: translateY(-20px);
+            transition: transform 0.3s ease-out;
+        }
+
+        .tutorial-modal.show .tutorial-content {
+            transform: translateY(0);
         }
 
         .tutorial-header {
@@ -457,6 +471,71 @@
         @keyframes tutorialBounce {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-10px); }
+        }
+
+        /* Tutorial blocking overlay */
+        .tutorial-blocking-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.1);
+            z-index: 999;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .tutorial-blocking-overlay.active {
+            pointer-events: all;
+            opacity: 1;
+        }
+
+        /* Blocked elements during tutorial */
+        .tutorial-blocked {
+            pointer-events: none !important;
+            opacity: 0.3 !important;
+            filter: grayscale(70%) !important;
+            cursor: not-allowed !important;
+            position: relative;
+            transition: all 0.3s ease-in-out !important;
+        }
+
+        .tutorial-blocked::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.2);
+            z-index: 100;
+            pointer-events: none;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        /* Allow highlighted elements to be clickable */
+        .tutorial-highlight {
+            pointer-events: all !important;
+            opacity: 1 !important;
+            filter: none !important;
+            cursor: pointer !important;
+            z-index: 1001 !important;
+            transition: all 0.3s ease-in-out !important;
+        }
+
+        .tutorial-highlight::after {
+            display: none !important;
+        }
+
+        /* Tutorial allowed elements */
+        .tutorial-allowed {
+            pointer-events: all !important;
+            opacity: 1 !important;
+            filter: none !important;
+            z-index: 1000 !important;
+            transition: all 0.3s ease-in-out !important;
         }
 
         /* Timer overlay */
@@ -975,7 +1054,8 @@
         <div class="spinner"></div>
     </div>
 
-
+    <!-- Tutorial Blocking Overlay -->
+    <div id="tutorialBlockingOverlay" class="tutorial-blocking-overlay"></div>
 
     <!-- Debug Panel -->
     <div class="debug-panel" id="debugPanel" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 8px; color: white; font-size: 12px; z-index: 1000; display: none;">
@@ -1019,7 +1099,6 @@
             <h1>🌙 Farpost</h1>
             <div style="display: flex; gap: 10px; margin-top: 5px;">
                 <button onclick="showAchievements()" class="achievements-btn">🏆 Achievements</button>
-                <!-- <button onclick="resetGame()" class="reset-btn">🔄 Reset Game</button> -->
             </div>
         </div>
     </div>
@@ -1198,6 +1277,7 @@
             generateGrid();
             updateUI();
             setupEventListeners();
+            setupTutorialClickPrevention();
             startGameLoop();
             
             // Hide loading screen
@@ -1219,19 +1299,29 @@
             setTimeout(() => showTutorialStep(), 1000);
         }
 
-        // Tutorial steps
+        // Tutorial steps with fixed sell logic
         const tutorialSteps = [
             {
+                title: "Welcome to Farpost!",
+                description: "Welcome to Farpost, your lunar mining operation! Your goal is to extract valuable resources from the Moon's surface, sell them for points, and expand your mining empire. You'll deploy expeditions to owned cells, use boosters to speed up extraction, and strategically grow your operation. Let's start with the basics!",
+                highlightSelector: null,
+                allowedSelectors: [".tutorial-skip", ".tutorial-btn", ".tutorial-continue"],
+                highlightAction: "welcome",
+                checkComplete: () => true // This step just shows information
+            },
+            {
                 title: "Deploy Your First Expedition",
-                description: "First, click on the 'Lunar Regolith' expedition in the Deploy section to select it.",
+                description: "Click on the 'Lunar Regolith' expedition in the Deploy section to select it.",
                 highlightSelector: ".resource-item:has(.resource-name:contains('Lunar Regolith'))",
+                allowedSelectors: [".resource-item:has(.resource-name:contains('Lunar Regolith'))", ".tutorial-skip", ".tutorial-btn", ".tutorial-continue"],
                 highlightAction: "select_expedition",
                 checkComplete: () => gameState.selectedExpedition === 'Lunar Regolith'
             },
             {
                 title: "Deploy to Cell",
-                description: "Now click on one of the owned cells (the green ones in the middle) to deploy your expedition.",
+                description: "Perfect! Now click on one of the owned cells (the green ones in the middle) to deploy your expedition.",
                 highlightSelector: ".hex-cell.owned",
+                allowedSelectors: [".hex-cell.owned", ".tutorial-skip", ".tutorial-btn", ".tutorial-continue"],
                 highlightAction: "deploy_expedition",
                 checkComplete: () => gameState.cells.some(cell => cell.extractionStartTime && !cell.isReady)
             },
@@ -1239,6 +1329,7 @@
                 title: "Use Instant Extract Booster",
                 description: "Click on 'Instant Extract' booster in the Apply Boosters section to select it.",
                 highlightSelector: ".booster-item:has(.booster-name:contains('Instant Extract'))",
+                allowedSelectors: [".booster-item:has(.booster-name:contains('Instant Extract'))", ".tutorial-skip", ".tutorial-btn", ".tutorial-continue"],
                 highlightAction: "select_booster",
                 checkComplete: () => gameState.selectedBooster === 'Instant Extract'
             },
@@ -1246,6 +1337,7 @@
                 title: "Apply Booster to Cell",
                 description: "Now click on the extracting cell (yellow border) to instantly complete the extraction.",
                 highlightSelector: ".hex-cell.extracting",
+                allowedSelectors: [".hex-cell.extracting", ".tutorial-skip", ".tutorial-btn", ".tutorial-continue"],
                 highlightAction: "apply_booster",
                 checkComplete: () => gameState.cells.some(cell => cell.isReady)
             },
@@ -1253,34 +1345,52 @@
                 title: "Collect Resources",
                 description: "Click on the glowing orange cell to collect your first resource!",
                 highlightSelector: ".hex-cell.ready",
+                allowedSelectors: [".hex-cell.ready", ".tutorial-skip", ".tutorial-btn", ".tutorial-continue"],
                 highlightAction: "collect_resource",
                 checkComplete: () => gameState.resources['Lunar Regolith'] > 0
             },
             {
-                title: "Sell Resources",
-                description: "Switch to the 'Sell' tab first, then click 'Sell All' to convert resources to points.",
+                title: "Switch to Sell Tab",
+                description: "Switch to the 'Sell' tab to access the market.",
                 highlightSelector: "#sellTab",
+                allowedSelectors: ["#sellTab", ".tutorial-skip", ".tutorial-btn", ".tutorial-continue"],
                 highlightAction: "switch_tab",
-                nextHighlight: ".resource-item:has(.resource-name:contains('Sell All'))",
+                checkComplete: () => gameState.activeTab === 'sell'
+            },
+            {
+                title: "Sell All Resources",
+                description: "Perfect! Now click 'Sell All' to convert your resources to points.",
+                highlightSelector: ".resource-item:has(.resource-name:contains('Sell All'))",
+                allowedSelectors: [".resource-item:has(.resource-name:contains('Sell All'))", ".tutorial-skip", ".tutorial-btn", ".tutorial-continue"],
+                highlightAction: "sell_resources",
                 checkComplete: () => gameState.points > 100 && gameState.resources['Lunar Regolith'] === 0
             },
             {
-                title: "Buy Second Expedition",
-                description: "Switch to 'Buy' tab and purchase another 'Lunar Regolith' expedition.",
+                title: "Switch to Buy Tab",
+                description: "Switch to the 'Buy' tab to purchase more expeditions.",
                 highlightSelector: "#buyTab",
+                allowedSelectors: ["#buyTab", ".tutorial-skip", ".tutorial-btn", ".tutorial-continue"],
                 highlightAction: "switch_tab",
-                nextHighlight: ".resource-item:has(.resource-name:contains('Lunar Regolith'))",
+                checkComplete: () => gameState.activeTab === 'buy'
+            },
+            {
+                title: "Purchase Second Expedition",
+                description: "Now purchase another 'Lunar Regolith' expedition to expand your operations!",
+                highlightSelector: ".resource-item:has(.resource-name:contains('Lunar Regolith'))",
+                allowedSelectors: [".resource-item:has(.resource-name:contains('Lunar Regolith'))", ".tutorial-skip", ".tutorial-btn", ".tutorial-continue"],
+                highlightAction: "purchase_expedition",
                 checkComplete: () => gameState.expeditions['Lunar Regolith'] >= 1
             },
             {
                 title: "Tutorial Complete!",
                 description: "Congratulations! You've learned the basics of Farpost. Continue exploring and expanding your lunar operation!",
                 highlightSelector: null,
+                allowedSelectors: [],
                 checkComplete: () => true // This step completes the tutorial
             }
         ];
 
-        // Show tutorial step
+        // Show tutorial step with smooth animations
         function showTutorialStep() {
             if (!gameState.tutorial.isActive) return;
             
@@ -1290,22 +1400,50 @@
                 return;
             }
             
+            console.log('Showing tutorial step:', gameState.tutorial.step, step.title);
+            console.log('Allowed selectors:', step.allowedSelectors);
+            console.log('Highlight selector:', step.highlightSelector);
+            
+            // First clear any existing blocking/highlighting from previous step
+            clearTutorialHighlights();
+            unblockAllElements();
+            
+            // Show modal first and let it fully animate
             showTutorialModal(step.title, step.description);
+            
+            // Wait for modal to fully appear before applying blocking and highlighting
+            setTimeout(() => {
+                // Block all elements first
+                blockAllElements();
+                
+                // Allow only specific elements for this step
+                allowElements(step.allowedSelectors);
+                
+                // Add highlighting after a short delay to ensure elements are rendered
+                setTimeout(() => {
+                    if (step.highlightSelector) {
+                        highlightElement(step.highlightSelector);
+                        console.log('Applied highlighting to:', step.highlightSelector);
+                    }
+                }, 200);
+            }, 400); // Wait for modal animation to complete
         }
 
-        // Check tutorial progress
+        // Check tutorial progress - simplified without complex nextHighlight logic
         function checkTutorialProgress() {
             if (!gameState.tutorial.isActive) return;
             
             const step = tutorialSteps[gameState.tutorial.step];
             if (step && step.checkComplete()) {
+                console.log('Tutorial step', gameState.tutorial.step, 'completed:', step.title);
+                
+                // Advance to next step
                 gameState.tutorial.step++;
+                console.log('Advancing to tutorial step:', gameState.tutorial.step);
                 
                 if (gameState.tutorial.step < tutorialSteps.length) {
-                    setTimeout(() => {
-                        hideTutorialModal();
-                        setTimeout(() => showTutorialStep(), 500);
-                    }, 1000);
+                    // Just show the next step directly since modal is already being hidden
+                    setTimeout(() => showTutorialStep(), 500);
                 } else {
                     completeTutorial();
                 }
@@ -1317,9 +1455,13 @@
             gameState.tutorial.isActive = false;
             gameState.tutorial.completed = true;
             
+            // Clear all tutorial highlights and unblock elements
+            clearTutorialHighlights();
+            unblockAllElements();
+            
             unlockAchievement('tutorial_complete');
             showNotification('Tutorial completed! You\'re now ready to explore Farpost on your own!', 'success');
-            hideTutorialModal();
+            hideTutorialModal(true); // Skip progress check when completing tutorial
             saveGameState();
         }
 
@@ -1348,28 +1490,43 @@
                 Object.values(gameState.resources).some(amount => amount > 0)) {
                 unlockAchievement('first_collect');
             }
-            
-            // Check first sell - will be triggered in sell function
-            
-            // Check second expedition purchase - will be triggered in purchase function
         }
 
-        // Tutorial modal functions
+        // Tutorial modal functions with smooth transitions
         function showTutorialModal(title, description) {
             document.getElementById('tutorialTitle').textContent = title;
             document.getElementById('tutorialDescription').textContent = description;
-            document.getElementById('tutorialModal').style.display = 'flex';
+            const modal = document.getElementById('tutorialModal');
+            modal.style.display = 'flex';
+            
+            // Trigger smooth animation
+            setTimeout(() => {
+                modal.classList.add('show');
+            }, 50);
         }
 
-        function hideTutorialModal() {
-            document.getElementById('tutorialModal').style.display = 'none';
+        function hideTutorialModal(skipProgressCheck = false) {
+            const modal = document.getElementById('tutorialModal');
+            modal.classList.remove('show');
+            
+            // Hide after animation completes
+            setTimeout(() => {
+                modal.style.display = 'none';
+                
+                // Check tutorial progress after modal is hidden (only when called by user interaction)
+                if (gameState.tutorial.isActive && !skipProgressCheck) {
+                    setTimeout(() => checkTutorialProgress(), 100);
+                }
+            }, 300);
         }
 
         function skipTutorial() {
             if (confirm('Are you sure you want to skip the tutorial? You can restart later by resetting the game.')) {
                 gameState.tutorial.isActive = false;
                 gameState.tutorial.completed = true;
-                hideTutorialModal();
+                clearTutorialHighlights();
+                unblockAllElements();
+                hideTutorialModal(true); // Skip progress check when skipping tutorial
                 saveGameState();
                 showNotification('Tutorial skipped. Welcome to Farpost!', 'info');
             }
@@ -1399,6 +1556,138 @@
                 `;
                 achievementsList.appendChild(item);
             });
+        }
+
+        // Tutorial highlighting functions
+        function highlightElement(selector) {
+            // Remove existing highlights
+            clearTutorialHighlights();
+            
+            if (!selector) return;
+            
+            const elements = findElementsBySelector(selector);
+            
+            elements.forEach(element => {
+                if (element) {
+                    element.classList.add('tutorial-highlight');
+                }
+            });
+        }
+
+        function clearTutorialHighlights() {
+            document.querySelectorAll('.tutorial-highlight').forEach(element => {
+                element.classList.remove('tutorial-highlight');
+            });
+        }
+
+        // Tutorial blocking functions
+        function blockAllElements() {
+            const interactiveElements = [
+                '.hex-cell',
+                '.resource-item',
+                '.booster-item', 
+                '.tab',
+                '.achievements-btn',
+                '.debug-panel button',
+                '#debugPanel'
+            ];
+            
+            interactiveElements.forEach(selector => {
+                document.querySelectorAll(selector).forEach(element => {
+                    element.classList.add('tutorial-blocked');
+                });
+            });
+            
+            // Activate blocking overlay
+            const overlay = document.getElementById('tutorialBlockingOverlay');
+            overlay.classList.add('active');
+        }
+
+        function unblockAllElements() {
+            document.querySelectorAll('.tutorial-blocked').forEach(element => {
+                element.classList.remove('tutorial-blocked');
+            });
+            
+            document.querySelectorAll('.tutorial-allowed').forEach(element => {
+                element.classList.remove('tutorial-allowed');
+            });
+            
+            // Deactivate blocking overlay
+            const overlay = document.getElementById('tutorialBlockingOverlay');
+            overlay.classList.remove('active');
+        }
+
+        function allowElements(selectors) {
+            if (!selectors) return;
+            
+            selectors.forEach(selector => {
+                const elements = findElementsBySelector(selector);
+                elements.forEach(element => {
+                    element.classList.remove('tutorial-blocked');
+                    element.classList.add('tutorial-allowed');
+                });
+            });
+            
+            // Always allow tutorial modal controls
+            document.querySelectorAll('.tutorial-btn, .tutorial-skip, .tutorial-continue').forEach(element => {
+                element.classList.remove('tutorial-blocked');
+                element.classList.add('tutorial-allowed');
+            });
+        }
+
+        function findElementsBySelector(selector) {
+            // Handle complex selectors that don't work with :has() in older browsers
+            let elements = [];
+            
+            if (selector.includes(":has(.resource-name:contains('Lunar Regolith'))")) {
+                const resourceItems = document.querySelectorAll('.resource-item');
+                elements = Array.from(resourceItems).filter(item => {
+                    const nameElement = item.querySelector('.resource-name');
+                    return nameElement && nameElement.textContent.includes('Lunar Regolith');
+                });
+            } else if (selector.includes(":has(.booster-name:contains('Instant Extract'))")) {
+                const boosterItems = document.querySelectorAll('.booster-item');
+                elements = Array.from(boosterItems).filter(item => {
+                    const nameElement = item.querySelector('.booster-name');
+                    return nameElement && nameElement.textContent.includes('Instant Extract');
+                });
+            } else if (selector.includes(":has(.resource-name:contains('Sell All'))")) {
+                const resourceItems = document.querySelectorAll('.resource-item');
+                elements = Array.from(resourceItems).filter(item => {
+                    const nameElement = item.querySelector('.resource-name');
+                    return nameElement && nameElement.textContent.includes('Sell All');
+                });
+            } else if (selector === ".hex-cell.owned") {
+                // Find all owned cells (cells that are owned but not extracting or ready)
+                elements = Array.from(document.querySelectorAll('.hex-cell')).filter(cell => {
+                    return cell.classList.contains('owned') && 
+                           !cell.classList.contains('extracting') && 
+                           !cell.classList.contains('ready');
+                });
+            } else if (selector === ".hex-cell.extracting") {
+                elements = Array.from(document.querySelectorAll('.hex-cell.extracting'));
+            } else if (selector === ".hex-cell.ready") {
+                elements = Array.from(document.querySelectorAll('.hex-cell.ready'));
+            } else {
+                elements = Array.from(document.querySelectorAll(selector));
+            }
+            
+            return elements;
+        }
+
+        // Add global click prevention for blocked elements
+        function setupTutorialClickPrevention() {
+            document.addEventListener('click', function(event) {
+                if (!gameState.tutorial.isActive) return;
+                
+                const target = event.target.closest('.tutorial-blocked');
+                if (target) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    showNotification('Follow the tutorial instructions! Click on the highlighted element.', 'warning');
+                    return false;
+                }
+            }, true); // Use capture phase to intercept early
         }
 
         // Generate hexagonal grid
@@ -1838,6 +2127,23 @@
             
             // Update cell info
             updateCellInfo();
+            
+            // Refresh tutorial highlighting and blocking if active
+            if (gameState.tutorial.isActive) {
+                const step = tutorialSteps[gameState.tutorial.step];
+                if (step) {
+                    setTimeout(() => {
+                        // Reapply blocking and allowing
+                        blockAllElements();
+                        allowElements(step.allowedSelectors);
+                        
+                        // Reapply highlighting
+                        if (step.highlightSelector) {
+                            highlightElement(step.highlightSelector);
+                        }
+                    }, 100);
+                }
+            }
         }
 
         // Update resource list in the separate panel
@@ -1955,6 +2261,15 @@
                 tabContent.innerHTML = '<div class="panel-title">Purchase Expeditions</div>';
                 
                 Object.entries(gameConfig.resources).forEach(([resourceType, config]) => {
+                    // During tutorial, only show the purchase option on the final step
+                    const isTutorialActive = gameState.tutorial.isActive;
+                    const isFinalTutorialStep = gameState.tutorial.step >= 7; // Buy second expedition step
+                    
+                    if (isTutorialActive && !isFinalTutorialStep) {
+                        // Skip showing all purchase options during early tutorial
+                        return;
+                    }
+                    
                     const canAfford = gameState.points >= config.cost;
                     const levelOk = gameState.level >= config.level;
                     const isDisabled = !canAfford || !levelOk;
@@ -2061,7 +2376,6 @@
                     `;
                     tabContent.appendChild(noResources);
                 }
-                
             }
         }
 
@@ -2092,6 +2406,9 @@
                 document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
                 document.getElementById('buyTab').classList.add('active');
                 updateUI();
+                
+                // Check tutorial progress after tab switch
+                setTimeout(() => checkTutorialProgress(), 100);
             };
             
             document.getElementById('sellTab').onclick = () => {
@@ -2099,6 +2416,9 @@
                 document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
                 document.getElementById('sellTab').classList.add('active');
                 updateUI();
+                
+                // Check tutorial progress after tab switch
+                setTimeout(() => checkTutorialProgress(), 100);
             };
             
             // Debug panel controls
@@ -2248,7 +2568,8 @@
                         'Advanced Booster': 0,
                         'Elite Booster': 0,
                         'Master Booster': 0,
-                        'Ultimate Booster': 0
+                        'Ultimate Booster': 0,
+                        'Instant Extract': 0
                     };
                 }
                 
@@ -2388,6 +2709,9 @@
                 showNotification(`Selected ${boosterName}. Click cells to apply booster!`, 'success');
             }
             
+            // Check tutorial progress after selection
+            checkTutorialProgress();
+            
             updateUI();
         }
 
@@ -2444,6 +2768,9 @@
                 gameState.mode = 'deploy';
                 showNotification(`Selected ${resourceType} expedition. Click cells to deploy!`, 'success');
             }
+            
+            // Check tutorial progress after selection
+            checkTutorialProgress();
             
             updateUI();
         }
@@ -2527,7 +2854,8 @@
                         'Advanced Booster': 0,
                         'Elite Booster': 0,
                         'Master Booster': 0,
-                        'Ultimate Booster': 0
+                        'Ultimate Booster': 0,
+                        'Instant Extract': 0
                     },
                     cells: Array(18).fill(null).map((_, index) => ({
                         id: index,
@@ -2539,7 +2867,21 @@
                     })),
                     activeTab: 'buy',
                     mode: 'select',
-                    debugSpeed: 1
+                    debugSpeed: 1,
+                    tutorial: {
+                        isActive: false,
+                        step: 0,
+                        completed: false,
+                        initialSetup: false
+                    },
+                    achievements: {
+                        'first_expedition': { completed: false, title: 'First Expedition', description: 'Deploy your first expedition', reward: 100 },
+                        'first_boost': { completed: false, title: 'Speed Demon', description: 'Use your first booster', reward: 50 },
+                        'first_collect': { completed: false, title: 'Resource Collector', description: 'Collect your first resource', reward: 75 },
+                        'first_sell': { completed: false, title: 'Merchant', description: 'Sell your first resource', reward: 100 },
+                        'second_expedition': { completed: false, title: 'Expanding Operations', description: 'Buy a second expedition', reward: 150 },
+                        'tutorial_complete': { completed: false, title: 'Graduate', description: 'Complete the tutorial', reward: 200 }
+                    }
                 };
                 
                 // Regenerate grid and update UI
