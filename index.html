@@ -953,13 +953,16 @@
             position: fixed;
             top: 10px;
             right: 10px;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.9);
             padding: 10px;
             border-radius: 8px;
             color: white;
             font-size: 12px;
-            z-index: 1000;
+            z-index: 10000;
             display: none;
+            border: 2px solid #4CAF50;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            pointer-events: all;
         }
 
         .debug-panel div {
@@ -1058,7 +1061,7 @@
     <div id="tutorialBlockingOverlay" class="tutorial-blocking-overlay"></div>
 
     <!-- Debug Panel -->
-    <div class="debug-panel" id="debugPanel" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 10px; border-radius: 8px; color: white; font-size: 12px; z-index: 1000; display: none;">
+    <div class="debug-panel tutorial-allowed" id="debugPanel" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.9); padding: 10px; border-radius: 8px; color: white; font-size: 12px; z-index: 10000; display: none; border: 2px solid #4CAF50; box-shadow: 0 4px 20px rgba(0,0,0,0.8); pointer-events: all;">
         <div style="margin-bottom: 10px; font-weight: bold;">🔧 Debug Panel</div>
         <div style="margin-bottom: 5px;">
             <label>Speed Multiplier: <span id="speedDisplay">1x</span></label>
@@ -1068,6 +1071,7 @@
         </div>
         <div style="margin-bottom: 10px;">
             <button onclick="resetGame()" style="padding: 5px 10px; background: #ff4444; border: none; border-radius: 4px; color: white; cursor: pointer; margin-right: 5px;">Reset Game</button>
+            <button onclick="resetTutorial()" style="padding: 5px 10px; background: #2196F3; border: none; border-radius: 4px; color: white; cursor: pointer; margin-right: 5px;">Reset Tutorial</button>
             <button onclick="toggleDebug()" style="padding: 5px 10px; background: #f44336; border: none; border-radius: 4px; color: white; cursor: pointer;">Hide</button>
         </div>
     </div>
@@ -1272,6 +1276,11 @@
             // Check for tutorial setup
             if (!gameState.tutorial.initialSetup && !gameState.tutorial.completed) {
                 setupTutorial();
+            } else if (gameState.tutorial.isActive) {
+                // If tutorial was active, restore its state properly
+                setTimeout(() => {
+                    showTutorialStep();
+                }, 1000);
             }
             
             generateGrid();
@@ -1390,7 +1399,7 @@
             }
         ];
 
-        // Show tutorial step with smooth animations
+        // Show tutorial step with improved UX flow
         function showTutorialStep() {
             if (!gameState.tutorial.isActive) return;
             
@@ -1401,32 +1410,18 @@
             }
             
             console.log('Showing tutorial step:', gameState.tutorial.step, step.title);
-            console.log('Allowed selectors:', step.allowedSelectors);
-            console.log('Highlight selector:', step.highlightSelector);
             
-            // First clear any existing blocking/highlighting from previous step
+            // Always clear any existing blocking/highlighting from previous step
             clearTutorialHighlights();
             unblockAllElements();
             
-            // Show modal first and let it fully animate
-            showTutorialModal(step.title, step.description);
-            
-            // Wait for modal to fully appear before applying blocking and highlighting
-            setTimeout(() => {
-                // Block all elements first
-                blockAllElements();
-                
-                // Allow only specific elements for this step
-                allowElements(step.allowedSelectors);
-                
-                // Add highlighting after a short delay to ensure elements are rendered
-                setTimeout(() => {
-                    if (step.highlightSelector) {
-                        highlightElement(step.highlightSelector);
-                        console.log('Applied highlighting to:', step.highlightSelector);
-                    }
-                }, 200);
-            }, 400); // Wait for modal animation to complete
+            // For first two steps (0 and 1), show immediately without animation
+            if (gameState.tutorial.step <= 1) {
+                showTutorialModal(step.title, step.description, false); // No animation
+            } else {
+                // For interactive steps, just show the modal - NO highlighting until modal is closed
+                showTutorialModal(step.title, step.description, true);
+            }
         }
 
         // Check tutorial progress - simplified without complex nextHighlight logic
@@ -1437,13 +1432,21 @@
             if (step && step.checkComplete()) {
                 console.log('Tutorial step', gameState.tutorial.step, 'completed:', step.title);
                 
+                // Clear highlighting when step is completed
+                clearTutorialHighlights();
+                unblockAllElements();
+                
                 // Advance to next step
                 gameState.tutorial.step++;
                 console.log('Advancing to tutorial step:', gameState.tutorial.step);
                 
                 if (gameState.tutorial.step < tutorialSteps.length) {
-                    // Just show the next step directly since modal is already being hidden
-                    setTimeout(() => showTutorialStep(), 500);
+                    // For steps 1-2, show immediately. For others, show with normal delay
+                    if (gameState.tutorial.step <= 1) {
+                        showTutorialStep(); // No delay for first two steps
+                    } else {
+                        setTimeout(() => showTutorialStep(), 500);
+                    }
                 } else {
                     completeTutorial();
                 }
@@ -1492,17 +1495,22 @@
             }
         }
 
-        // Tutorial modal functions with smooth transitions
-        function showTutorialModal(title, description) {
+        // Tutorial modal functions with improved UX
+        function showTutorialModal(title, description, withAnimation = true) {
             document.getElementById('tutorialTitle').textContent = title;
             document.getElementById('tutorialDescription').textContent = description;
             const modal = document.getElementById('tutorialModal');
             modal.style.display = 'flex';
             
-            // Trigger smooth animation
-            setTimeout(() => {
+            if (withAnimation) {
+                // Trigger smooth animation for interactive steps
+                setTimeout(() => {
+                    modal.classList.add('show');
+                }, 50);
+            } else {
+                // Show immediately for intro steps
                 modal.classList.add('show');
-            }, 50);
+            }
         }
 
         function hideTutorialModal(skipProgressCheck = false) {
@@ -1513,11 +1521,38 @@
             setTimeout(() => {
                 modal.style.display = 'none';
                 
+                // For interactive steps (3+), apply highlighting AFTER modal is completely hidden
+                if (gameState.tutorial.isActive && gameState.tutorial.step >= 2 && !skipProgressCheck) {
+                    applyTutorialHighlighting();
+                }
+                
                 // Check tutorial progress after modal is hidden (only when called by user interaction)
                 if (gameState.tutorial.isActive && !skipProgressCheck) {
                     setTimeout(() => checkTutorialProgress(), 100);
                 }
             }, 300);
+        }
+
+        // Apply tutorial highlighting and blocking after modal is hidden
+        function applyTutorialHighlighting() {
+            const step = tutorialSteps[gameState.tutorial.step];
+            if (!step) return;
+            
+            console.log('Applying highlighting for step:', gameState.tutorial.step, step.title);
+            console.log('Highlight selector:', step.highlightSelector);
+            console.log('Allowed selectors:', step.allowedSelectors);
+            
+            // Block all elements first
+            blockAllElements();
+            
+            // Allow only specific elements for this step
+            allowElements(step.allowedSelectors);
+            
+            // Add highlighting
+            if (step.highlightSelector) {
+                highlightElement(step.highlightSelector);
+                console.log('Applied highlighting to:', step.highlightSelector);
+            }
         }
 
         function skipTutorial() {
@@ -1628,8 +1663,8 @@
                 });
             });
             
-            // Always allow tutorial modal controls
-            document.querySelectorAll('.tutorial-btn, .tutorial-skip, .tutorial-continue').forEach(element => {
+            // Always allow tutorial modal controls and debug panel
+            document.querySelectorAll('.tutorial-btn, .tutorial-skip, .tutorial-continue, .debug-panel, .debug-panel *, #debugPanel, #debugPanel *').forEach(element => {
                 element.classList.remove('tutorial-blocked');
                 element.classList.add('tutorial-allowed');
             });
@@ -2128,20 +2163,25 @@
             // Update cell info
             updateCellInfo();
             
-            // Refresh tutorial highlighting and blocking if active
-            if (gameState.tutorial.isActive) {
-                const step = tutorialSteps[gameState.tutorial.step];
-                if (step) {
-                    setTimeout(() => {
-                        // Reapply blocking and allowing
-                        blockAllElements();
-                        allowElements(step.allowedSelectors);
-                        
-                        // Reapply highlighting
-                        if (step.highlightSelector) {
-                            highlightElement(step.highlightSelector);
-                        }
-                    }, 100);
+            // Only refresh tutorial highlighting if we're in an interactive step AND modal is not visible
+            if (gameState.tutorial.isActive && gameState.tutorial.step >= 2) {
+                const modal = document.getElementById('tutorialModal');
+                const isModalVisible = modal.style.display === 'flex' && modal.classList.contains('show');
+                
+                if (!isModalVisible) {
+                    const step = tutorialSteps[gameState.tutorial.step];
+                    if (step) {
+                        setTimeout(() => {
+                            // Reapply blocking and allowing only if modal is not visible
+                            blockAllElements();
+                            allowElements(step.allowedSelectors);
+                            
+                            // Reapply highlighting
+                            if (step.highlightSelector) {
+                                highlightElement(step.highlightSelector);
+                            }
+                        }, 100);
+                    }
                 }
             }
         }
@@ -2809,6 +2849,32 @@
         function toggleDebug() {
             const debugPanel = document.getElementById('debugPanel');
             debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function resetTutorial() {
+            if (confirm('Are you sure you want to restart the tutorial? This will reset your tutorial progress.')) {
+                // Clear any active tutorial state
+                clearTutorialHighlights();
+                unblockAllElements();
+                hideTutorialModal(true); // Skip progress check
+                
+                // Reset tutorial state
+                gameState.tutorial = {
+                    isActive: false,
+                    step: 0,
+                    completed: false,
+                    initialSetup: false
+                };
+                
+                // Reset tutorial achievement
+                gameState.achievements.tutorial_complete.completed = false;
+                
+                // Setup tutorial from beginning
+                setupTutorial();
+                
+                showNotification('Tutorial reset! Starting from the beginning.', 'success');
+                saveGameState();
+            }
         }
 
         function resetGame() {
