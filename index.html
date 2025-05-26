@@ -4,6 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🌙 Farpost</title>
+    
+    <!-- Open Graph and Farcaster Frame Meta Tags -->
+    <meta property="og:title" content="🌙 Farpost - Lunar Mining Game">
+    <meta property="og:description" content="Extract resources from the Moon's surface and build your lunar empire! Deploy expeditions, collect resources, and expand your territory.">
+    <meta property="og:image" content="https://your-domain.com/api/frame-image?level=1&points=1000&cells=3&extracting=0&ready=0">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://your-domain.com/">
+    
+    <!-- Farcaster Frame Meta Tags -->
+    <meta property="fc:frame" content="vNext">
+    <meta property="fc:frame:image" content="https://your-domain.com/api/frame-image?level=1&points=1000&cells=3&extracting=0&ready=0">
+    <meta property="fc:frame:button:1" content="🎮 Start Playing">
+    <meta property="fc:frame:button:2" content="📖 How to Play">
+    <meta property="fc:frame:button:2:action" content="link">
+    <meta property="fc:frame:button:2:target" content="https://your-domain.com/#tutorial">
+    <meta property="fc:frame:button:3" content="🌐 Open Game">
+    <meta property="fc:frame:button:3:action" content="link">
+    <meta property="fc:frame:button:3:target" content="https://your-domain.com/">
+    <meta property="fc:frame:post_url" content="https://your-domain.com/api/frame">
+    <meta property="fc:frame:input:text" content="Enter your username (optional)">
     <style>
         * {
             margin: 0;
@@ -1103,6 +1123,7 @@
             <h1>🌙 Farpost</h1>
             <div style="display: flex; gap: 10px; margin-top: 5px;">
                 <button onclick="showAchievements()" class="achievements-btn">🏆 Achievements</button>
+                <div id="userDisplay" style="font-size: 12px; color: #aaa; margin-left: 10px;"></div>
             </div>
         </div>
     </div>
@@ -1171,6 +1192,11 @@
             </div>
         </div>
     </div>
+
+    <!-- Include external scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/farcaster.js"></script>
 
     <script>
         // Game state
@@ -1270,13 +1296,39 @@
         };
 
         // Initialize game
-        function initGame() {
-            loadGameState();
+        async function initGame() {
+            // Initialize API client
+            const gameAPI = new FarpostAPI();
+            await gameAPI.init();
             
-            // Check for tutorial setup
-            if (!gameState.tutorial.initialSetup && !gameState.tutorial.completed) {
+            // Initialize Farcaster integration
+            const farcasterIntegration = new FarcasterIntegration();
+            const isFrameContext = await farcasterIntegration.init(gameAPI);
+            
+            // Store references globally
+            window.gameAPI = gameAPI;
+            window.farcasterIntegration = farcasterIntegration;
+            
+            // Set up auth state change handler
+            gameAPI.onAuthStateChange = (event, session) => {
+                if (event === 'signed_in') {
+                    console.log('User signed in:', session?.user);
+                    updateUserDisplay(session?.user);
+                } else if (event === 'signed_out') {
+                    console.log('User signed out');
+                    updateUserDisplay(null);
+                }
+            };
+            
+            // Load game state (from Farcaster or local storage)
+            if (!isFrameContext) {
+                loadGameState();
+            }
+            
+            // Check for tutorial setup (skip for Farcaster frames)
+            if (!isFrameContext && !gameState.tutorial.initialSetup && !gameState.tutorial.completed) {
                 setupTutorial();
-            } else if (gameState.tutorial.isActive) {
+            } else if (!isFrameContext && gameState.tutorial.isActive) {
                 // If tutorial was active, restore its state properly
                 setTimeout(() => {
                     showTutorialStep();
@@ -1288,6 +1340,11 @@
             setupEventListeners();
             setupTutorialClickPrevention();
             startGameLoop();
+            
+            // Add Farcaster user info to header if in frame context
+            if (isFrameContext) {
+                updateUserDisplay(farcasterIntegration.getUserInfo());
+            }
             
             // Hide loading screen
             setTimeout(() => {
@@ -2576,6 +2633,11 @@
         // Save game state
         function saveGameState() {
             localStorage.setItem('farpostGame', JSON.stringify(gameState));
+            
+            // Also save to Farcaster if in frame context
+            if (window.farcasterIntegration?.isAuthenticated()) {
+                window.farcasterIntegration.saveGameState();
+            }
         }
 
         // Load game state
@@ -3001,6 +3063,31 @@
                 toggleDebug();
             }
         });
+
+        // Update user display
+        function updateUserDisplay(user) {
+            const userDisplay = document.getElementById('userDisplay');
+            if (!userDisplay) return;
+            
+            if (user) {
+                if (user.isFrameUser) {
+                    userDisplay.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 5px;">
+                            ${user.pfpUrl ? `<img src="${user.pfpUrl}" alt="${user.username}" style="width: 16px; height: 16px; border-radius: 50%;">` : '🎯'}
+                            <span>@${user.username || `fid:${user.fid}`}</span>
+                        </div>
+                    `;
+                } else {
+                    userDisplay.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 5px;">
+                            👤 <span>${user.email || user.username || 'Player'}</span>
+                        </div>
+                    `;
+                }
+            } else {
+                userDisplay.innerHTML = '';
+            }
+        }
 
         // Initialize game when page loads
         document.addEventListener('DOMContentLoaded', initGame);

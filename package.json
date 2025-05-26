@@ -13,7 +13,10 @@
     "@supabase/auth-js": "^2.69.1",
     "@supabase/postgrest-js": "^1.19.4",
     "@supabase/functions-js": "^2.4.4",
-    "@supabase/node-fetch": "^2.6.15"
+    "@supabase/node-fetch": "^2.6.15",
+    "frames.js": "^0.15.3",
+    "@farcaster/hub-nodejs": "^0.11.2",
+    "viem": "^2.0.0"
   },
   "devDependencies": {
     "netlify-cli": "^17.0.0"
