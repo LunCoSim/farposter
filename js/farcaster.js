@@ -1,23 +1,84 @@
-// Farcaster Frame Integration for Farpost Game
+// Farcaster Mini App Integration for Farpost Game
 class FarcasterIntegration {
   constructor() {
     this.isFrameContext = false;
+    this.isMiniApp = false;
     this.frameData = null;
     this.user = null;
     this.gameAPI = null;
     this.frameUrl = window.location.origin;
+    this.sdk = null;
+    this.context = null;
   }
 
   // Initialize Farcaster integration
   async init(gameAPI) {
     this.gameAPI = gameAPI;
-    this.detectFrameContext();
     
-    if (this.isFrameContext) {
-      await this.handleFrameContext();
+    // Wait for SDK to be available
+    await this.waitForSDK();
+    
+    if (this.sdk) {
+      await this.initializeMiniApp();
+    } else {
+      // Fallback to legacy frame detection
+      this.detectFrameContext();
+      if (this.isFrameContext) {
+        await this.handleFrameContext();
+      }
     }
     
-    return this.isFrameContext;
+    return this.isFrameContext || this.isMiniApp;
+  }
+
+  // Wait for SDK to be available
+  async waitForSDK() {
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds max
+    
+    while (attempts < maxAttempts && !window.sdk) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      attempts++;
+    }
+    
+    if (window.sdk) {
+      this.sdk = window.sdk;
+      console.log('🎯 Farcaster SDK loaded');
+      return true;
+    } else {
+      console.log('⚠️ Farcaster SDK not available, using fallback');
+      return false;
+    }
+  }
+
+  // Initialize Mini App with SDK
+  async initializeMiniApp() {
+    try {
+      // Initialize the SDK
+      const context = await this.sdk.init();
+      this.context = context;
+      this.isMiniApp = true;
+      
+      console.log('🎯 Mini App context detected:', context);
+      
+      if (context?.user) {
+        this.frameData = {
+          fid: context.user.fid,
+          username: context.user.username,
+          displayName: context.user.displayName,
+          pfpUrl: context.user.pfpUrl,
+          bio: context.user.bio
+        };
+        
+        await this.handleMiniAppContext();
+      }
+      
+    } catch (error) {
+      console.error('Error initializing Mini App:', error);
+      this.isMiniApp = false;
+      // Fallback to legacy frame detection
+      this.detectFrameContext();
+    }
   }
 
   // Detect if running inside a Farcaster frame
@@ -63,7 +124,29 @@ class FarcasterIntegration {
     console.log('📊 Frame data extracted:', this.frameData);
   }
 
-  // Handle frame context initialization
+  // Handle Mini App context initialization
+  async handleMiniAppContext() {
+    if (!this.frameData?.fid) {
+      console.warn('No Farcaster user ID found in mini app context');
+      return;
+    }
+
+    try {
+      // Create or get user based on Farcaster ID
+      await this.authenticateWithFarcaster();
+      
+      // Load game state for this user
+      await this.loadUserGameState();
+      
+      // Enable Mini App features
+      this.enableMiniAppFeatures();
+      
+    } catch (error) {
+      console.error('Error handling mini app context:', error);
+    }
+  }
+
+  // Handle frame context initialization (legacy fallback)
   async handleFrameContext() {
     if (!this.frameData?.fid) {
       console.warn('No Farcaster user ID found in frame data');
@@ -83,6 +166,46 @@ class FarcasterIntegration {
     } catch (error) {
       console.error('Error handling frame context:', error);
     }
+  }
+
+  // Enable Mini App specific features
+  enableMiniAppFeatures() {
+    try {
+      // Enable notifications if available
+      if (this.sdk?.notifications) {
+        this.setupNotifications();
+      }
+      
+      // Enable wallet interactions if available
+      if (this.sdk?.wallet) {
+        this.setupWalletFeatures();
+      }
+      
+      // Setup Mini App specific UI
+      this.setupMiniAppUI();
+      
+    } catch (error) {
+      console.error('Error enabling mini app features:', error);
+    }
+  }
+
+  // Setup notifications
+  setupNotifications() {
+    // This can be used to send notifications to users
+    console.log('📱 Notifications enabled for Mini App');
+  }
+
+  // Setup wallet features
+  setupWalletFeatures() {
+    // This can be used for wallet interactions
+    console.log('💰 Wallet features enabled for Mini App');
+  }
+
+  // Setup Mini App UI
+  setupMiniAppUI() {
+    // Add Mini App specific styling or features
+    document.body.classList.add('mini-app-mode');
+    console.log('🎨 Mini App UI enabled');
   }
 
   // Authenticate user with Farcaster data
@@ -332,7 +455,9 @@ class FarcasterIntegration {
         username: this.frameData.username,
         displayName: this.frameData.displayName,
         pfpUrl: this.frameData.pfpUrl,
-        isFrameUser: true
+        bio: this.frameData.bio,
+        isFrameUser: this.isFrameContext,
+        isMiniAppUser: this.isMiniApp
       };
     }
     return null;
@@ -340,7 +465,48 @@ class FarcasterIntegration {
 
   // Check if user is authenticated via Farcaster
   isAuthenticated() {
-    return this.isFrameContext && this.user !== null;
+    return (this.isFrameContext || this.isMiniApp) && this.user !== null;
+  }
+
+  // Send notification to user (Mini App feature)
+  async sendNotification(title, body, targetUrl = null) {
+    if (!this.isMiniApp || !this.sdk?.actions) {
+      console.warn('Notifications not available');
+      return false;
+    }
+
+    try {
+      const result = await this.sdk.actions.addFrame({
+        title,
+        body,
+        url: targetUrl || window.location.href
+      });
+      console.log('📱 Notification sent:', result);
+      return true;
+    } catch (error) {
+      console.error('Failed to send notification:', error);
+      return false;
+    }
+  }
+
+  // Share achievement or game state
+  async shareGameState(message, imageUrl = null) {
+    if (!this.isMiniApp || !this.sdk?.actions) {
+      console.warn('Sharing not available');
+      return false;
+    }
+
+    try {
+      const result = await this.sdk.actions.openComposer({
+        text: message,
+        embeds: imageUrl ? [{ url: imageUrl }] : undefined
+      });
+      console.log('📤 Share composer opened:', result);
+      return true;
+    } catch (error) {
+      console.error('Failed to open share composer:', error);
+      return false;
+    }
   }
 }
 

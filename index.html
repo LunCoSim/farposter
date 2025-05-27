@@ -8,22 +8,26 @@
     <!-- Open Graph and Farcaster Frame Meta Tags -->
     <meta property="og:title" content="🌙 Farpost - Lunar Mining Game">
     <meta property="og:description" content="Extract resources from the Moon's surface and build your lunar empire! Deploy expeditions, collect resources, and expand your territory.">
-    <meta property="og:image" content="https://farpost.netlify.app/api/frame-image?level=1&points=1000&cells=3&extracting=0&ready=0">
+    <meta property="og:image" content="https://farpost.lunco.space/api/frame-image?level=1&points=1000&cells=3&extracting=0&ready=0">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://farpost.netlify.app/">
+    <meta property="og:url" content="https://farpost.lunco.space/">
     
-    <!-- Farcaster Frame Meta Tags -->
+    <!-- Farcaster Mini App Meta Tags -->
     <meta property="fc:frame" content="vNext">
-    <meta property="fc:frame:image" content="https://farpost.netlify.app/api/frame-image?level=1&points=1000&cells=3&extracting=0&ready=0">
-    <meta property="fc:frame:button:1" content="🎮 Start Playing">
+    <meta property="fc:frame:image" content="https://farpost.lunco.space/api/frame-image?level=1&points=1000&cells=3&extracting=0&ready=0">
+    <meta property="fc:frame:button:1" content="🎮 Play Mini App">
+    <meta property="fc:frame:button:1:action" content="launch_frame">
+    <meta property="fc:frame:button:1:target" content="https://farpost.lunco.space/">
     <meta property="fc:frame:button:2" content="📖 How to Play">
     <meta property="fc:frame:button:2:action" content="link">
-    <meta property="fc:frame:button:2:target" content="https://farpost.netlify.app/#tutorial">
-    <meta property="fc:frame:button:3" content="🌐 Open Game">
-    <meta property="fc:frame:button:3:action" content="link">
-    <meta property="fc:frame:button:3:target" content="https://farpost.netlify.app/">
-    <meta property="fc:frame:post_url" content="https://farpost.netlify.app/api/frame">
-    <meta property="fc:frame:input:text" content="Enter your username (optional)">
+    <meta property="fc:frame:button:2:target" content="https://farpost.lunco.space/#tutorial">
+    <meta property="fc:frame:post_url" content="https://farpost.lunco.space/api/frame">
+    
+    <!-- Mini App Metadata -->
+    <meta name="fc:frame:name" content="🌙 Farpost - Lunar Mining Game">
+    <meta name="fc:frame:icon" content="https://farpost.lunco.space/icon-192.png">
+    <meta name="fc:frame:splash_image" content="https://farpost.lunco.space/splash.png">
+    <meta name="fc:frame:splash_background_color" content="#0f0f0f">
     <style>
         * {
             margin: 0;
@@ -505,6 +509,78 @@
             pointer-events: none;
             opacity: 0;
             transition: opacity 0.3s ease-in-out;
+        }
+
+        /* Mini App specific styles */
+        .mini-app-mode {
+            /* Optimize for mobile Mini App view */
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
+        }
+        
+        .mini-app-mode .header {
+            /* Minimize header in Mini App mode */
+            padding: 10px 15px;
+        }
+        
+        .mini-app-mode .game-title h1 {
+            font-size: 16px;
+        }
+        
+        .mini-app-mode .main-container {
+            /* Optimize layout for Mini App */
+            grid-template-columns: 1fr;
+            gap: 10px;
+            padding: 10px;
+        }
+        
+        .mini-app-mode .resource-panel,
+        .mini-app-mode .booster-panel {
+            /* Make panels more compact in Mini App */
+            padding: 15px;
+        }
+        
+        /* Mini App share button */
+        .share-achievement-btn {
+            background: #1DA1F2;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+            transition: background 0.3s;
+        }
+        
+        .share-achievement-btn:hover {
+            background: #0d8bd1;
+        }
+        
+        /* Mini App notification badge */
+        .mini-app-notification {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: rgba(29, 161, 242, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            animation: slideInFromRight 0.3s ease-out;
+        }
+        
+        @keyframes slideInFromRight {
+            from {
+                transform: translateX(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         .tutorial-blocking-overlay.active {
@@ -1123,6 +1199,7 @@
             <h1>🌙 Farpost</h1>
             <div style="display: flex; gap: 10px; margin-top: 5px;">
                 <button onclick="showAchievements()" class="achievements-btn">🏆 Achievements</button>
+                <button onclick="shareProgress()" class="share-achievement-btn" id="shareBtn" style="display: none;">📤 Share</button>
                 <div id="userDisplay" style="font-size: 12px; color: #aaa; margin-left: 10px;"></div>
             </div>
         </div>
@@ -1197,6 +1274,12 @@
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
     <script src="js/farcaster.js"></script>
+    
+    <!-- Farcaster Frame SDK -->
+    <script type="module">
+        import { sdk } from 'https://esm.sh/@farcaster/frame-sdk'
+        window.sdk = sdk;
+    </script>
 
     <script>
         // Game state
@@ -1534,6 +1617,10 @@
             gameState.points += achievement.reward;
             
             showNotification(`🏆 Achievement Unlocked: ${achievement.title} (+${achievement.reward} points)`, 'success');
+            
+            // Send Mini App notification if available
+            sendAchievementNotification(achievement.title);
+            
             saveGameState();
         }
 
@@ -3067,16 +3154,23 @@
         // Update user display
         function updateUserDisplay(user) {
             const userDisplay = document.getElementById('userDisplay');
+            const shareBtn = document.getElementById('shareBtn');
             if (!userDisplay) return;
             
             if (user) {
-                if (user.isFrameUser) {
+                if (user.isFrameUser || user.isMiniAppUser) {
                     userDisplay.innerHTML = `
                         <div style="display: flex; align-items: center; gap: 5px;">
                             ${user.pfpUrl ? `<img src="${user.pfpUrl}" alt="${user.username}" style="width: 16px; height: 16px; border-radius: 50%;">` : '🎯'}
                             <span>@${user.username || `fid:${user.fid}`}</span>
+                            ${user.isMiniAppUser ? '<span style="color: #1DA1F2; font-size: 10px;">📱 Mini App</span>' : ''}
                         </div>
                     `;
+                    
+                    // Show share button for Mini App users
+                    if (user.isMiniAppUser && shareBtn) {
+                        shareBtn.style.display = 'inline-block';
+                    }
                 } else {
                     userDisplay.innerHTML = `
                         <div style="display: flex; align-items: center; gap: 5px;">
@@ -3086,7 +3180,54 @@
                 }
             } else {
                 userDisplay.innerHTML = '';
+                if (shareBtn) {
+                    shareBtn.style.display = 'none';
+                }
             }
+        }
+
+        // Share progress via Mini App
+        async function shareProgress() {
+            if (!window.farcasterIntegration?.isMiniApp) {
+                showNotification('Sharing is only available in Mini App mode', 'warning');
+                return;
+            }
+
+            const level = gameState.level;
+            const points = gameState.points.toLocaleString();
+            const ownedCells = gameState.ownedCells;
+            const completedAchievements = Object.values(gameState.achievements).filter(a => a.completed).length;
+            const totalAchievements = Object.keys(gameState.achievements).length;
+
+            const message = `🌙 Just reached Level ${level} in Farpost! 
+🏆 ${completedAchievements}/${totalAchievements} achievements unlocked
+💰 ${points} points earned
+🌍 ${ownedCells} lunar cells owned
+
+Mining the Moon, one resource at a time! 🚀
+
+Play: https://farpost.lunco.space/`;
+
+            const success = await window.farcasterIntegration.shareGameState(message);
+            
+            if (success) {
+                showNotification('Progress shared successfully! 🎉', 'success');
+            } else {
+                showNotification('Failed to share progress', 'error');
+            }
+        }
+
+        // Send achievement notification via Mini App
+        async function sendAchievementNotification(achievementTitle) {
+            if (!window.farcasterIntegration?.isMiniApp) {
+                return;
+            }
+
+            await window.farcasterIntegration.sendNotification(
+                '🏆 Achievement Unlocked!',
+                `You've earned: ${achievementTitle}`,
+                window.location.href
+            );
         }
 
         // Initialize game when page loads

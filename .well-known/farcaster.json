@@ -1,0 +1,22 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjUxMDQ2MCwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweGVjNzEyOTQ5MTI1OGUwNDUxNDk0MTQ5Y0FlMzFGZTQzMDEwMTk3MTEifQ",
+    "payload": "eyJkb21haW4iOiJmYXJwb3N0Lmx1bmNvLnNwYWNlIn0",
+    "signature": "MHg3ZTNkMDVhNWQ1NjFjNzU4ZjY5NGY2Y2IzY2U4Yzc2OTk3Y2ZkM2UwYzI4YTg1ZGE0MWFhMTZlMGFhMTkyY2QzMzUwM2VkYzBhOGRkMjEzNDBlOWI1ZjBhMzY0ZmY2ODAxZGUxNzQyYjIwN2VjMGM4NGMwZmU1ODM2YjNjYWFhZTFi"
+  },
+  "frame": {
+    "version": "0.1",
+    "name": "🌙 Farpost - Lunar Mining Game",
+    "iconUrl": "https://farpost.lunco.space/icon-192.png",
+    "splashImageUrl": "https://farpost.lunco.space/splash.png",
+    "splashBackgroundColor": "#0f0f0f",
+    "homeUrl": "https://farpost.lunco.space/",
+    "imageUrl": "https://farpost.lunco.space/api/frame-image?level=1&points=1000&cells=3&extracting=0&ready=0",
+    "buttonTitle": "🎮 Play Game",
+    "tags": ["game", "mining", "lunar", "strategy", "crypto"],
+    "screenshotUrls": [
+      "https://farpost.lunco.space/screenshot1.png",
+      "https://farpost.lunco.space/screenshot2.png"
+    ]
+  }
+} 

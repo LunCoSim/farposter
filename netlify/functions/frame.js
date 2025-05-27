@@ -144,37 +144,118 @@ async function handlePostRequest(event, headers) {
 
 // Get or create user game state
 async function getOrCreateUserGameState(fid) {
-  // For now, return default game state
-  // In production, this would connect to your Supabase database
-  return {
-    fid: fid,
-    level: 1,
-    xp: 0,
-    points: 1000,
-    ownedCells: 3,
-    maxCells: 3,
-    resources: {
-      'Lunar Regolith': 0,
-      'Iron Ore': 0,
-      'Aluminum': 0,
-      'Water Ice': 0
-    },
-    expeditions: {
-      'Lunar Regolith': 1,
-      'Iron Ore': 0,
-      'Aluminum': 0,
-      'Water Ice': 0
-    },
-    cells: Array(18).fill(null).map((_, index) => ({
-      id: index,
-      owned: [7, 8, 9].includes(index),
-      resourceType: null,
-      extractionStartTime: null,
-      extractionEndTime: null,
-      isReady: false
-    })),
-    lastUpdated: Date.now()
-  };
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Missing Supabase environment variables');
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Get or create user using the Farcaster ID
+    const { data: userId, error: userError } = await supabase
+      .rpc('get_or_create_farcaster_user', {
+        fid: fid.toString()
+      });
+    
+    if (userError) {
+      console.error('Error getting/creating user:', userError);
+      throw new Error('Failed to get or create user');
+    }
+    
+    // Fetch complete game state
+    const [profileResult, cellsResult, resourcesResult, expeditionsResult] = await Promise.all([
+      supabase.from('player_profiles').select('*').eq('id', userId).single(),
+      supabase.from('game_cells').select('*').eq('player_id', userId).order('cell_index'),
+      supabase.from('player_resources').select('*').eq('player_id', userId),
+      supabase.from('player_expeditions').select('*').eq('player_id', userId)
+    ]);
+    
+    if (profileResult.error) throw new Error('Failed to fetch profile');
+    if (cellsResult.error) throw new Error('Failed to fetch cells');
+    if (resourcesResult.error) throw new Error('Failed to fetch resources');
+    if (expeditionsResult.error) throw new Error('Failed to fetch expeditions');
+    
+    const profile = profileResult.data;
+    const cells = cellsResult.data;
+    const resources = resourcesResult.data;
+    const expeditions = expeditionsResult.data;
+    
+    // Transform to frame-compatible format
+    const gameState = {
+      fid: fid,
+      playerId: userId,
+      level: profile.level,
+      xp: profile.xp,
+      points: profile.points,
+      ownedCells: profile.owned_cells,
+      maxCells: profile.max_cells,
+      resources: {},
+      expeditions: {},
+      cells: Array(18).fill(null).map((_, index) => {
+        const cell = cells.find(c => c.cell_index === index);
+        return {
+          id: index,
+          owned: !!cell,
+          resourceType: cell?.resource_type || null,
+          extractionStartTime: cell?.extraction_start_time ? new Date(cell.extraction_start_time).getTime() : null,
+          extractionEndTime: cell?.extraction_end_time ? new Date(cell.extraction_end_time).getTime() : null,
+          isReady: cell?.is_ready || false
+        };
+      }),
+      lastUpdated: Date.now()
+    };
+    
+    // Populate resources
+    resources.forEach(resource => {
+      gameState.resources[resource.resource_type] = resource.amount;
+    });
+    
+    // Populate expeditions
+    expeditions.forEach(expedition => {
+      gameState.expeditions[expedition.expedition_type] = expedition.amount;
+    });
+    
+    return gameState;
+    
+  } catch (error) {
+    console.error('Database error:', error);
+    // Fallback to demo state
+    return {
+      fid: fid,
+      level: 1,
+      xp: 0,
+      points: 1000,
+      ownedCells: 3,
+      maxCells: 3,
+      resources: {
+        'Lunar Regolith': 0,
+        'Iron Ore': 0,
+        'Aluminum': 0,
+        'Water Ice': 0
+      },
+      expeditions: {
+        'Lunar Regolith': 1,
+        'Iron Ore': 0,
+        'Aluminum': 0,
+        'Water Ice': 0
+      },
+      cells: Array(18).fill(null).map((_, index) => ({
+        id: index,
+        owned: [7, 8, 9].includes(index),
+        resourceType: null,
+        extractionStartTime: null,
+        extractionEndTime: null,
+        isReady: false
+      })),
+      lastUpdated: Date.now(),
+      demoMode: true
+    };
+  }
 }
 
 // Handle start/continue action
