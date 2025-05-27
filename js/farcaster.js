@@ -31,22 +31,26 @@ class FarcasterIntegration {
     return this.isFrameContext || this.isMiniApp;
   }
 
-  // Wait for SDK to be available
+  // Wait for SDK to be available or load it dynamically
   async waitForSDK() {
-    let attempts = 0;
-    const maxAttempts = 50; // 5 seconds max
-    
-    while (attempts < maxAttempts && !window.sdk) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      attempts++;
-    }
-    
-    if (window.sdk) {
-      this.sdk = window.sdk;
-      console.log('🎯 Farcaster SDK loaded');
-      return true;
-    } else {
-      console.log('⚠️ Farcaster SDK not available, using fallback');
+    try {
+      // Try to load SDK dynamically if not available
+      if (!window.sdk) {
+        console.log('🎯 Loading Farcaster SDK dynamically...');
+        const module = await import('https://esm.sh/@farcaster/frame-sdk');
+        window.sdk = module.sdk;
+      }
+      
+      if (window.sdk) {
+        console.log('🎯 Farcaster SDK loaded');
+        this.sdk = window.sdk;
+        return true;
+      } else {
+        console.warn('⚠️ Farcaster SDK not available');
+        return false;
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to load Farcaster SDK:', error);
       return false;
     }
   }
@@ -54,6 +58,14 @@ class FarcasterIntegration {
   // Initialize Mini App with SDK
   async initializeMiniApp() {
     try {
+      // Check if SDK exists and has init method
+      if (!this.sdk || typeof this.sdk.init !== 'function') {
+        console.log('🎯 SDK not available or init method missing, skipping Mini App initialization');
+        this.isMiniApp = false;
+        this.detectFrameContext();
+        return;
+      }
+      
       // Initialize the SDK
       const context = await this.sdk.init();
       this.context = context;

@@ -2,8 +2,8 @@
 const config = {
   // Supabase configuration
   supabase: {
-    url: process.env.SUPABASE_URL || 'your-supabase-url-here',
-    anonKey: process.env.SUPABASE_ANON_KEY || 'your-supabase-anon-key-here'
+    url: 'https://your-supabase-url.supabase.co',
+    anonKey: 'your-supabase-anon-key-here'
   },
   
   // API endpoints

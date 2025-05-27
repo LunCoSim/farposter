@@ -17,6 +17,12 @@ class FarpostAPI {
       const supabaseUrl = window.CONFIG?.supabase?.url || 'your-supabase-url-here';
       const supabaseKey = window.CONFIG?.supabase?.anonKey || 'your-supabase-anon-key-here';
       
+      // Skip Supabase initialization if not properly configured
+      if (supabaseUrl === 'your-supabase-url-here' || supabaseUrl.includes('your-supabase-url')) {
+        console.log('Supabase not configured, running in offline mode');
+        return true;
+      }
+      
       this.supabase = createClient(supabaseUrl, supabaseKey);
       
       // Set up auth state listener
