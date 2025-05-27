@@ -1,4 +1,9 @@
 // Configuration for Farpost Game
+// Defensive check to prevent process.env errors in browser
+if (typeof process === 'undefined') {
+  window.process = { env: {} };
+}
+
 const config = {
   // Supabase configuration
   supabase: {

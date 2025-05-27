@@ -1370,13 +1370,14 @@
 
         // Initialize game
         async function initGame() {
-            // Initialize API client
-            const gameAPI = new FarpostAPI();
-            await gameAPI.init();
-            
-            // Initialize Farcaster integration
-            const farcasterIntegration = new FarcasterIntegration();
-            const isFrameContext = await farcasterIntegration.init(gameAPI);
+            try {
+                // Initialize API client
+                const gameAPI = new FarpostAPI();
+                await gameAPI.init();
+                
+                // Initialize Farcaster integration
+                const farcasterIntegration = new FarcasterIntegration();
+                const isFrameContext = await farcasterIntegration.init(gameAPI);
             
             // Store references globally
             window.gameAPI = gameAPI;
@@ -1423,6 +1424,16 @@
             setTimeout(() => {
                 document.getElementById('loading').classList.remove('show');
             }, 500);
+            
+            } catch (error) {
+                console.error('Error initializing game:', error);
+                showNotification('Failed to initialize game. Please refresh the page.', 'error');
+                
+                // Hide loading screen even if there's an error
+                setTimeout(() => {
+                    document.getElementById('loading').classList.remove('show');
+                }, 500);
+            }
         }
 
         // Setup initial tutorial state
