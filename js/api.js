@@ -10,19 +10,21 @@ class FarpostAPI {
   // Initialize Supabase client
   async init() {
     try {
-      // Dynamically import Supabase client
-      const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js@2');
-      
       // Get config from environment or config file
       const supabaseUrl = window.CONFIG?.supabase?.url || 'your-supabase-url-here';
       const supabaseKey = window.CONFIG?.supabase?.anonKey || 'your-supabase-anon-key-here';
       
       // Skip Supabase initialization if not properly configured
-      if (supabaseUrl === 'your-supabase-url-here' || supabaseUrl.includes('your-supabase-url')) {
+      if (supabaseUrl === 'your-supabase-url-here' || 
+          supabaseUrl.includes('your-supabase-url') ||
+          supabaseUrl === 'https://your-supabase-url.supabase.co' ||
+          !supabaseUrl.startsWith('https://')) {
         console.log('Supabase not configured, running in offline mode');
         return true;
       }
       
+      // Dynamically import Supabase client only if we have valid config
+      const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js@2');
       this.supabase = createClient(supabaseUrl, supabaseKey);
       
       // Set up auth state listener

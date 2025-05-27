@@ -37,20 +37,34 @@ class FarcasterIntegration {
       // Try to load SDK dynamically if not available
       if (!window.sdk) {
         console.log('🎯 Loading Farcaster SDK dynamically...');
-        const module = await import('https://esm.sh/@farcaster/frame-sdk');
-        window.sdk = module.sdk;
+        try {
+          const module = await import('https://esm.sh/@farcaster/frame-sdk');
+          window.sdk = module.sdk;
+          console.log('🎯 SDK imported successfully');
+        } catch (importError) {
+          console.warn('⚠️ Failed to import SDK, trying alternative method:', importError);
+          // Try alternative loading method
+          try {
+            const response = await fetch('https://esm.sh/@farcaster/frame-sdk');
+            if (response.ok) {
+              console.log('🎯 SDK endpoint is reachable but import failed - running in fallback mode');
+            }
+          } catch (fetchError) {
+            console.warn('⚠️ SDK endpoint not reachable:', fetchError);
+          }
+        }
       }
       
       if (window.sdk) {
-        console.log('🎯 Farcaster SDK loaded');
+        console.log('🎯 Farcaster SDK loaded successfully');
         this.sdk = window.sdk;
         return true;
       } else {
-        console.warn('⚠️ Farcaster SDK not available');
+        console.log('ℹ️ Farcaster SDK not available - running in regular web mode');
         return false;
       }
     } catch (error) {
-      console.warn('⚠️ Failed to load Farcaster SDK:', error);
+      console.log('ℹ️ Farcaster SDK unavailable:', error.message);
       return false;
     }
   }
