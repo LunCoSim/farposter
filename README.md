@@ -11,12 +11,33 @@ Farpost is an engaging lunar mining simulation where players:
 - Progress through levels to unlock advanced resources
 - Build a thriving lunar colony
 
-## 🏗️ Architecture
+## ��️ Architecture
+
+### ✨ **New Modular Architecture** (2025)
+
+The game has been completely refactored from a monolithic design to a modern, modular architecture:
+
+```
+js/core/
+├── GameStateManager.js    # State management & validation
+├── ResourceManager.js     # Resource extraction & boosters  
+├── UIController.js        # UI updates & interactions
+└── GameEngine.js          # Main coordinator & public API
+```
+
+**Benefits:**
+- 🔧 **Maintainable**: Clear separation of concerns
+- 🧪 **Testable**: Individual module testing capabilities
+- 📈 **Scalable**: Easy to add new features
+- ⚡ **Performance**: Optimized update cycles
+- 🐛 **Debuggable**: Better error tracking and logging
 
 ### Frontend
-- **HTML5/CSS3/JavaScript** - Pure web technologies for maximum compatibility
+- **Modular JavaScript Architecture** - Event-driven components with clear boundaries
+- **HTML5/CSS3** - Pure web technologies for maximum compatibility
 - **Responsive Design** - Works on desktop, tablet, and mobile
 - **Real-time Updates** - Live progress tracking and animations
+- **Event System** - Loose coupling via reactive updates
 
 ### Backend
 - **Supabase** - PostgreSQL database with real-time capabilities
