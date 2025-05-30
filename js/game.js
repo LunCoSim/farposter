@@ -767,11 +767,14 @@ class FarpostGame {
       // Use the booster
       this.gameState.boosters[boosterType]--;
       
+      // Award XP for using booster
+      this.gameState.xp += boosterConfig.useXP;
+      
       // Complete extraction instantly
       cell.isReady = true;
       cell.extractionEndTime = Date.now();
       
-      this.showNotification(`${boosterType} used! Extraction completed instantly!`, 'success');
+      this.showNotification(`${boosterType} used! Extraction completed instantly! (+${boosterConfig.useXP} XP)`, 'success');
       
       // Track for achievements
       this.achievements?.trackAction('booster_used');
@@ -780,6 +783,7 @@ class FarpostGame {
       this.gameState.selectedBooster = null;
       this.gameState.mode = 'select';
       
+      this.checkLevelUp();
       this.updateUI();
       this.saveGameState();
       return;
@@ -807,6 +811,9 @@ class FarpostGame {
     // Use the booster
     this.gameState.boosters[boosterType]--;
     
+    // Award XP for using booster
+    this.gameState.xp += boosterConfig.useXP;
+    
     // Apply booster to cell for 1 hour
     this.gameState.boostedCells[cellIndex] = {
       boosterType: boosterType,
@@ -822,9 +829,9 @@ class FarpostGame {
       const newRemaining = Math.max(1000, remaining / boosterConfig.multiplier);
       cell.extractionEndTime = Date.now() + newRemaining;
       
-      this.showNotification(`${boosterType} applied! Current extraction sped up ${boosterConfig.multiplier}x.`, 'success');
+      this.showNotification(`${boosterType} applied! Current extraction sped up ${boosterConfig.multiplier}x. (+${boosterConfig.useXP} XP)`, 'success');
     } else {
-      this.showNotification(`${boosterType} cannot boost ${cell.resourceType} (tier too high).`, 'warning');
+      this.showNotification(`${boosterType} cannot boost ${cell.resourceType} (tier too high). (+${boosterConfig.useXP} XP)`, 'warning');
     }
     
     // Track for achievements
@@ -834,6 +841,7 @@ class FarpostGame {
     this.gameState.selectedBooster = null;
     this.gameState.mode = 'select';
     
+    this.checkLevelUp();
     this.updateUI();
     this.saveGameState();
   }
@@ -928,17 +936,25 @@ class FarpostGame {
       tabContent.innerHTML = '<div class="panel-title">Collected Resources</div>';
       
       let hasResources = false;
+      let totalPossibleValue = 0;
+      let totalPossibleXP = 0;
+      
       Object.entries(this.gameState.resources).forEach(([resourceType, amount]) => {
         if (amount > 0) {
           hasResources = true;
           const resourceConfig = this.getGameConfig().resources[resourceType];
           const totalValue = resourceConfig.value * amount;
+          const totalXP = resourceConfig.saleXP * amount;
+          totalPossibleValue += totalValue;
+          totalPossibleXP += totalXP;
+          
           const item = document.createElement('div');
           item.className = 'resource-item';
           item.innerHTML = `
             <div>
               <div class="resource-name">${resourceType}</div>
-              <div class="resource-value">Value: ${resourceConfig.value} pts each (Total: ${totalValue} pts)</div>
+              <div class="resource-value">Value: ${resourceConfig.value} pts (+${resourceConfig.saleXP} XP) each</div>
+              <div class="resource-cost">Total: ${totalValue} pts (+${totalXP} XP)</div>
             </div>
             <div class="resource-amount">${amount}</div>
           `;
@@ -954,7 +970,7 @@ class FarpostGame {
         sellAllButton.innerHTML = `
           <div>
             <div class="resource-name">💰 Sell All Resources</div>
-            <div class="resource-value">Convert all resources to points</div>
+            <div class="resource-value">Total: ${totalPossibleValue} points (+${totalPossibleXP} XP)</div>
           </div>
           <div class="resource-amount">Sell All</div>
         `;
@@ -1037,12 +1053,16 @@ class FarpostGame {
   // Sell resources
   sellResources() {
     let totalValue = 0;
+    let totalXP = 0;
     let soldItems = 0;
     
     Object.entries(this.gameState.resources).forEach(([resourceType, amount]) => {
       if (amount > 0) {
-        const value = this.getGameConfig().resources[resourceType].value * amount;
+        const resourceConfig = this.getGameConfig().resources[resourceType];
+        const value = resourceConfig.value * amount;
+        const xp = resourceConfig.saleXP * amount;
         totalValue += value;
+        totalXP += xp;
         soldItems += amount;
         this.gameState.resources[resourceType] = 0;
       }
@@ -1054,13 +1074,13 @@ class FarpostGame {
     }
     
     this.gameState.points += totalValue;
-    this.gameState.xp += Math.floor(totalValue * 0.05);
+    this.gameState.xp += totalXP;
     
     // Track for achievements and tutorial
     this.achievements?.trackAction('resources_sold', { amount: soldItems });
     this.tutorial?.checkAction('sell_resources');
     
-    this.showNotification(`Sold ${soldItems} resources for ${totalValue} points!`, 'success');
+    this.showNotification(`Sold ${soldItems} resources for ${totalValue} points! (+${totalXP} XP)`, 'success');
     this.checkLevelUp();
     this.updateUI();
     this.saveGameState();

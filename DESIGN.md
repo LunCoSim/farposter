@@ -6,18 +6,18 @@ A resource extraction game on the Moon where players manage expeditions, extract
 ## 2. Core Systems
 
 ### 2.1 Resource System
-| Resource | Expedition Cost | Mining Time | Base Value | XP Reward | Unlock Level | Notes |
-|----------|----------------|-------------|------------|-----------|--------------|-------|
-| Lunar Regolith | 20 | 30 min | 50 | 10 | 1 | Most abundant resource |
-| Iron Ore | 30 | 1 hour | 100 | 15 | 1 | Basic construction material |
-| Aluminum | 35 | 2 hours | 150 | 18 | 1 | Lightweight construction material |
-| Water Ice | 40 | 4 hours | 200 | 20 | 1 | Essential for life support |
-| Magnesium | 45 | 6 hours | 180 | 22 | 5 | Lightweight metal |
-| Silicon | 50 | 8 hours | 250 | 25 | 5 | Electronics component |
-| Titanium | 80 | 12 hours | 500 | 40 | 5 | High-strength material |
-| Rare Earth Elements | 150 | 16 hours | 1500 | 75 | 10 | Advanced electronics |
-| Platinum Group Metals | 200 | 20 hours | 2000 | 100 | 15 | Catalysts and electronics |
-| Helium-3 | 300 | 24 hours | 5000 | 150 | 20 | Fusion fuel |
+| Resource | Expedition Cost | Mining Time | Base Value | XP Reward | Sale XP | Unlock Level | Notes |
+|----------|----------------|-------------|------------|-----------|---------|--------------|-------|
+| Lunar Regolith | 20 | 30 min | 50 | 10 | 3 | 1 | Most abundant resource |
+| Iron Ore | 30 | 1 hour | 100 | 15 | 5 | 1 | Basic construction material |
+| Aluminum | 35 | 2 hours | 150 | 18 | 8 | 1 | Lightweight construction material |
+| Water Ice | 40 | 4 hours | 200 | 20 | 10 | 1 | Essential for life support |
+| Magnesium | 45 | 6 hours | 180 | 22 | 9 | 5 | Lightweight metal |
+| Silicon | 50 | 8 hours | 250 | 25 | 13 | 5 | Electronics component |
+| Titanium | 80 | 12 hours | 500 | 40 | 25 | 5 | High-strength material |
+| Rare Earth Elements | 150 | 16 hours | 1500 | 75 | 75 | 10 | Advanced electronics |
+| Platinum Group Metals | 200 | 20 hours | 2000 | 100 | 100 | 15 | Catalysts and electronics |
+| Helium-3 | 300 | 24 hours | 5000 | 150 | 250 | 20 | Fusion fuel |
 
 Resource Availability by Level:
 1. Level 1 Resources (Quick Cycle)
@@ -54,6 +54,27 @@ Strategic Timing:
 - Long Cycle (16-24 hours): Good for casual players
 - Players should plan their check-ins based on mining cycles
 - Multiple cells can be managed with different cycle times
+
+#### XP Rewards System:
+**Collection XP**: Earned when collecting completed resources from cells
+- Fixed amount per resource type (see XP Reward column in resource table)
+- Earned immediately upon resource collection
+
+**Sale XP**: Earned when selling resources for points
+- Fixed amount per resource type (see Sale XP column in resource table)  
+- Calculated based on ~5% of resource value, rounded for balance
+- Earned for each individual resource sold
+
+**Booster Usage XP**: Earned when using any booster
+- All boosters award 50 XP when used
+- Earned immediately when booster is applied to a cell
+- Applies to both speed boosters and Instant Extract
+
+**Examples:**
+- Collecting 1 Lunar Regolith: +10 XP
+- Selling 1 Lunar Regolith: +3 XP  
+- Using Basic Booster: +50 XP
+- Total for complete Lunar Regolith cycle: 63 XP (10 + 3 + 50)
 
 ### 2.2 Booster System
 | Booster | Cost | Duration | Speed Boost | Unlock Level | Applicable Resources |
@@ -210,8 +231,8 @@ Level Progression:
 |--------|-----------|-----------|-------|
 | Start Expedition | Unlimited | Based on resource | Limited by available cells |
 | Collect Resources | Unlimited | Based on resource | Must wait for mining time |
-| Sell Resources | Unlimited | 5% of sale value | Instant transaction |
-| Apply Speed Booster | Limited by inventory | 50 | Apply to owned cell, consumed on expedition start |
+| Sell Resources | Unlimited | Fixed XP per resource | See resource table for sale XP values |
+| Apply Speed Booster | Limited by inventory | 50 | Apply to owned cell, consumed on use |
 | Use Instant Extract | Limited by inventory | 50 | Use on extracting cell, immediate effect |
 
 ### 3.2 Weekly Actions
