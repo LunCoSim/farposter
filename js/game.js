@@ -34,12 +34,12 @@ class FarpostGame {
         'Helium-3': 0
       },
       boosters: {
-        'Basic Booster': 0,
-        'Advanced Booster': 0,
-        'Elite Booster': 0,
-        'Master Booster': 0,
-        'Ultimate Booster': 0,
-        'Instant Extract': 0
+        'Basic Booster': { cost: 100, effect: '2x speed for 1 extraction', level: 3, speedMultiplier: 2, duration: 1, symbol: '⚡' },
+        'Advanced Booster': { cost: 200, effect: '3x speed for 1 extraction', level: 5, speedMultiplier: 3, duration: 1, symbol: '⚡⚡' },
+        'Elite Booster': { cost: 400, effect: '5x speed for 1 extraction', level: 8, speedMultiplier: 5, duration: 1, symbol: '⚡⚡⚡' },
+        'Master Booster': { cost: 800, effect: '2x speed for 3 extractions', level: 12, speedMultiplier: 2, duration: 3, symbol: '🚀' },
+        'Ultimate Booster': { cost: 1500, effect: '3x speed for 3 extractions', level: 16, speedMultiplier: 3, duration: 3, symbol: '🚀🚀' },
+        'Instant Extract': { cost: 1000, effect: 'Complete extraction instantly', level: 10, speedMultiplier: 999, duration: 1, symbol: '⭐' }
       },
       cells: Array(18).fill(null).map((_, index) => ({
         id: index,
@@ -52,6 +52,9 @@ class FarpostGame {
       activeTab: 'buy',
       mode: 'select', // 'select', 'deploy', 'booster'
       debugSpeed: 1,
+      // Booster tracking
+      activeBooster: null,
+      boosterUsesRemaining: 0,
       // Tutorial system
       tutorial: {
         isActive: false,
@@ -169,6 +172,14 @@ class FarpostGame {
         'Platinum Group Metals': { time: 30, cost: 300, value: 2000, xp: 200, level: 15, symbol: 'PGM' },
         'Helium-3': { time: 60, cost: 500, value: 5000, xp: 500, level: 20, symbol: 'He3' }
       },
+      boosters: {
+        'Basic Booster': { cost: 100, effect: '2x speed for 1 extraction', level: 3, speedMultiplier: 2, duration: 1, symbol: '⚡' },
+        'Advanced Booster': { cost: 200, effect: '3x speed for 1 extraction', level: 5, speedMultiplier: 3, duration: 1, symbol: '⚡⚡' },
+        'Elite Booster': { cost: 400, effect: '5x speed for 1 extraction', level: 8, speedMultiplier: 5, duration: 1, symbol: '⚡⚡⚡' },
+        'Master Booster': { cost: 800, effect: '2x speed for 3 extractions', level: 12, speedMultiplier: 2, duration: 3, symbol: '🚀' },
+        'Ultimate Booster': { cost: 1500, effect: '3x speed for 3 extractions', level: 16, speedMultiplier: 3, duration: 3, symbol: '🚀🚀' },
+        'Instant Extract': { cost: 1000, effect: 'Complete extraction instantly', level: 10, speedMultiplier: 999, duration: 1, symbol: '⭐' }
+      },
       levelThresholds: {
         2: 1000, 3: 2500, 4: 5000, 5: 8000, 6: 12000, 7: 17000, 8: 23000, 9: 30000, 10: 38000,
         11: 47000, 12: 57000, 13: 68000, 14: 80000, 15: 93000, 16: 107000, 17: 122000, 18: 138000, 19: 155000, 20: 173000
@@ -207,43 +218,68 @@ class FarpostGame {
   }
 
   // Show notification to user
-  showNotification(message, type = 'info', duration = 3000) {
+  showNotification(message, type = 'info', duration = 5000) {
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
     notification.textContent = message;
     
     notification.style.cssText = `
       position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 12px 20px;
-      border-radius: 8px;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 16px 24px;
+      border-radius: 12px;
       color: white;
       font-weight: bold;
+      font-size: 16px;
       z-index: 10000;
-      max-width: 300px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      max-width: 500px;
+      min-width: 250px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      border: 2px solid rgba(255,255,255,0.2);
+      opacity: 0;
+      transition: all 0.4s ease-in-out;
+      backdrop-filter: blur(10px);
     `;
 
     switch (type) {
       case 'success':
-        notification.style.backgroundColor = '#4CAF50';
+        notification.style.backgroundColor = 'rgba(76, 175, 80, 0.95)';
+        notification.style.borderColor = '#4CAF50';
         break;
       case 'error':
-        notification.style.backgroundColor = '#f44336';
+        notification.style.backgroundColor = 'rgba(244, 67, 54, 0.95)';
+        notification.style.borderColor = '#f44336';
         break;
       case 'warning':
-        notification.style.backgroundColor = '#ff9800';
+        notification.style.backgroundColor = 'rgba(255, 152, 0, 0.95)';
+        notification.style.borderColor = '#ff9800';
         break;
       default:
-        notification.style.backgroundColor = '#2196F3';
+        notification.style.backgroundColor = 'rgba(33, 150, 243, 0.95)';
+        notification.style.borderColor = '#2196F3';
     }
 
     document.body.appendChild(notification);
 
+    // Animate in
+    setTimeout(() => {
+      notification.style.opacity = '1';
+      notification.style.transform = 'translateX(-50%) translateY(0) scale(1)';
+    }, 50);
+
     setTimeout(() => {
       if (notification.parentNode) {
-        notification.parentNode.removeChild(notification);
+        // Animate out
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(-50%) translateY(-30px) scale(0.9)';
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 400);
       }
     }, duration);
   }
@@ -356,8 +392,17 @@ class FarpostGame {
       return;
     }
     
+    if (this.gameState.mode === 'booster' && this.gameState.selectedBooster && cell.extractionStartTime) {
+      this.useBooster(index, this.gameState.selectedBooster);
+      return;
+    }
+    
     if (cell.extractionStartTime) {
-      this.showNotification('This cell is already extracting!', 'warning');
+      if (this.gameState.selectedBooster) {
+        this.useBooster(index, this.gameState.selectedBooster);
+      } else {
+        this.showNotification('This cell is already extracting! Use boosters to speed it up.', 'warning');
+      }
       return;
     }
     
@@ -403,6 +448,22 @@ class FarpostGame {
     const resourceConfig = this.getGameConfig().resources[this.gameState.selectedExpedition];
     let extractionTime = resourceConfig.time * 60 * 1000; // Convert minutes to milliseconds
     extractionTime = Math.floor(extractionTime / this.gameState.debugSpeed);
+    
+    // Apply active booster effect if available
+    if (this.gameState.activeBooster && this.gameState.boosterUsesRemaining > 0) {
+      const boosterConfig = this.getGameConfig().boosters[this.gameState.activeBooster];
+      if (boosterConfig && this.gameState.activeBooster !== 'Instant Extract') {
+        extractionTime = Math.floor(extractionTime / boosterConfig.speedMultiplier);
+        this.gameState.boosterUsesRemaining--;
+        
+        // Clear active booster if no uses remaining
+        if (this.gameState.boosterUsesRemaining <= 0) {
+          this.showNotification(`${this.gameState.activeBooster} effect expired!`, 'info');
+          this.gameState.activeBooster = null;
+          this.gameState.boosterUsesRemaining = 0;
+        }
+      }
+    }
     
     // Deploy expedition
     this.gameState.expeditions[this.gameState.selectedExpedition]--;
@@ -542,6 +603,11 @@ class FarpostGame {
       return;
     }
     
+    if (this.gameState.mode === 'booster' && this.gameState.selectedBooster) {
+      cellInfo.textContent = `Use ${this.gameState.selectedBooster} on extracting cells • Right-click or ESC to deselect`;
+      return;
+    }
+    
     cellInfo.textContent = 'Buy expeditions, then deploy from Deployment Center';
   }
 
@@ -597,6 +663,72 @@ class FarpostGame {
       `;
       resourceList.appendChild(noExpeditions);
     }
+
+    // Show active booster effect
+    if (this.gameState.activeBooster && this.gameState.boosterUsesRemaining > 0) {
+      const activeBoosterDiv = document.createElement('div');
+      activeBoosterDiv.className = 'resource-item';
+      activeBoosterDiv.style.background = 'rgba(33, 150, 243, 0.2)';
+      activeBoosterDiv.style.borderLeft = '4px solid #2196F3';
+      const boosterConfig = this.getGameConfig().boosters[this.gameState.activeBooster];
+      activeBoosterDiv.innerHTML = `
+        <div>
+          <div class="resource-name">🚀 ${this.gameState.activeBooster} Active</div>
+          <div class="resource-value">${boosterConfig?.effect || 'Speed boost active'}</div>
+        </div>
+        <div class="resource-amount">${this.gameState.boosterUsesRemaining} uses left</div>
+      `;
+      resourceList.appendChild(activeBoosterDiv);
+    }
+
+    // Add booster selection section
+    const boosterTitle = document.createElement('div');
+    boosterTitle.className = 'panel-title';
+    boosterTitle.textContent = 'Use Boosters';
+    boosterTitle.style.marginTop = '20px';
+    boosterTitle.style.marginBottom = '10px';
+    resourceList.appendChild(boosterTitle);
+    
+    let hasBoosters = false;
+    Object.entries(this.getGameConfig().boosters).forEach(([boosterType, boosterConfig]) => {
+      const amount = this.gameState.boosters[boosterType] || 0;
+      const isSelected = this.gameState.selectedBooster === boosterType;
+      const hasBooster = amount > 0;
+      const levelOk = this.gameState.level >= boosterConfig.level;
+      const canUse = hasBooster && !this.gameState.activeBooster && levelOk;
+      
+      if (hasBooster) hasBoosters = true;
+      
+      const item = document.createElement('div');
+      item.className = `booster-item ${isSelected ? 'selected' : ''} ${!canUse ? 'disabled' : ''}`;
+      item.innerHTML = `
+        <div class="booster-info">
+          <div class="booster-name">${boosterConfig.symbol} ${boosterType}</div>
+          <div class="booster-effect">${boosterConfig.effect}</div>
+          ${!levelOk ? `<div class="booster-cost" style="color: #f44336;">Requires Level ${boosterConfig.level}</div>` : ''}
+        </div>
+        <div class="resource-amount">${amount}</div>
+      `;
+      
+      if (canUse) {
+        item.onclick = () => this.selectBooster(boosterType);
+      }
+      
+      resourceList.appendChild(item);
+    });
+    
+    if (!hasBoosters) {
+      const noBoosters = document.createElement('div');
+      noBoosters.className = 'booster-item disabled';
+      noBoosters.innerHTML = `
+        <div class="booster-info">
+          <div class="booster-name">Purchase boosters from the Boosters tab</div>
+          <div class="booster-effect">Boosters speed up extraction times</div>
+        </div>
+        <div class="resource-amount">ℹ️</div>
+      `;
+      resourceList.appendChild(noBoosters);
+    }
   }
 
   // Select expedition for deployment
@@ -618,6 +750,80 @@ class FarpostGame {
     }
     
     this.updateUI();
+  }
+
+  // Select booster for usage
+  selectBooster(boosterType) {
+    if (this.gameState.boosters[boosterType] === 0) {
+      this.showNotification(`No ${boosterType} boosters in inventory!`, 'error');
+      return;
+    }
+    
+    if (this.gameState.activeBooster) {
+      this.showNotification(`${this.gameState.activeBooster} is already active!`, 'warning');
+      return;
+    }
+    
+    if (this.gameState.selectedBooster === boosterType) {
+      this.gameState.selectedBooster = null;
+      this.gameState.mode = 'select';
+      this.showNotification(`Deselected ${boosterType}.`, 'info');
+    } else {
+      this.gameState.selectedBooster = boosterType;
+      this.gameState.selectedExpedition = null;
+      this.gameState.mode = 'booster';
+      this.showNotification(`Selected ${boosterType}. Click extracting cells to boost them!`, 'success');
+    }
+    
+    this.updateUI();
+  }
+
+  // Use booster on a cell
+  useBooster(cellIndex, boosterType) {
+    const cell = this.gameState.cells[cellIndex];
+    const boosterConfig = this.getGameConfig().boosters[boosterType];
+    
+    if (!cell.extractionStartTime || cell.isReady) {
+      this.showNotification('Can only boost cells that are currently extracting!', 'error');
+      return;
+    }
+    
+    if (this.gameState.boosters[boosterType] === 0) {
+      this.showNotification(`No ${boosterType} boosters in inventory!`, 'error');
+      return;
+    }
+    
+    // Use the booster
+    this.gameState.boosters[boosterType]--;
+    
+    // Apply booster effect
+    if (boosterType === 'Instant Extract') {
+      // Instant extraction
+      cell.isReady = true;
+      cell.extractionEndTime = Date.now();
+      this.showNotification(`${boosterType} used! Extraction completed instantly!`, 'success');
+    } else {
+      // Speed boost effect
+      this.gameState.activeBooster = boosterType;
+      this.gameState.boosterUsesRemaining = boosterConfig.duration;
+      
+      // Reduce remaining time based on speed multiplier
+      const remaining = cell.extractionEndTime - Date.now();
+      const newRemaining = Math.max(1000, remaining / boosterConfig.speedMultiplier);
+      cell.extractionEndTime = Date.now() + newRemaining;
+      
+      this.showNotification(`${boosterType} activated! ${boosterConfig.speedMultiplier}x speed for ${boosterConfig.duration} extraction(s)!`, 'success');
+    }
+    
+    // Track for achievements
+    this.achievements?.trackAction('booster_used');
+    
+    // Clear selection
+    this.gameState.selectedBooster = null;
+    this.gameState.mode = 'select';
+    
+    this.updateUI();
+    this.saveGameState();
   }
 
   // Update tab content
@@ -647,6 +853,37 @@ class FarpostGame {
         
         if (!isDisabled) {
           item.onclick = () => this.purchaseExpedition(resourceType);
+        }
+        
+        tabContent.appendChild(item);
+      });
+      
+    } else if (this.gameState.activeTab === 'boosters') {
+      tabContent.innerHTML = '<div class="panel-title">Purchase Boosters</div>';
+      
+      Object.entries(this.getGameConfig().boosters).forEach(([boosterType, config]) => {
+        const canAfford = this.gameState.points >= config.cost;
+        const levelOk = this.gameState.level >= config.level;
+        const isDisabled = !canAfford || !levelOk;
+        const ownedAmount = this.gameState.boosters[boosterType] || 0;
+        
+        const item = document.createElement('div');
+        item.className = `booster-item ${isDisabled ? 'disabled' : ''}`;
+        item.innerHTML = `
+          <div class="booster-info">
+            <div class="booster-name">${config.symbol} ${boosterType}</div>
+            <div class="booster-effect">${config.effect}</div>
+            <div class="booster-cost">Cost: ${config.cost} pts</div>
+            ${!levelOk ? `<div class="booster-cost" style="color: #f44336;">Requires Level ${config.level}</div>` : ''}
+          </div>
+          <div style="text-align: right;">
+            <div class="resource-amount">Owned: ${ownedAmount}</div>
+            <div class="resource-amount" style="color: #FF9800;">Buy</div>
+          </div>
+        `;
+        
+        if (!isDisabled) {
+          item.onclick = () => this.purchaseBooster(boosterType);
         }
         
         tabContent.appendChild(item);
@@ -731,6 +968,32 @@ class FarpostGame {
     this.saveGameState();
   }
 
+  // Purchase booster
+  purchaseBooster(boosterType) {
+    const boosterConfig = this.getGameConfig().boosters[boosterType];
+    
+    if (boosterConfig.level > this.gameState.level) {
+      this.showNotification(`Level ${boosterConfig.level} required for ${boosterType}!`, 'error');
+      return;
+    }
+    
+    if (this.gameState.points < boosterConfig.cost) {
+      this.showNotification(`Not enough points! Need ${boosterConfig.cost} points for ${boosterType}.`, 'error');
+      return;
+    }
+    
+    this.gameState.points -= boosterConfig.cost;
+    this.gameState.boosters[boosterType] = (this.gameState.boosters[boosterType] || 0) + 1;
+    
+    // Track for achievements
+    this.achievements?.trackAction('points_spent', { amount: boosterConfig.cost });
+    
+    this.showNotification(`Purchased ${boosterType}! (Owned: ${this.gameState.boosters[boosterType]})`, 'success');
+    
+    this.updateUI();
+    this.saveGameState();
+  }
+
   // Sell resources
   sellResources() {
     let totalValue = 0;
@@ -768,6 +1031,7 @@ class FarpostGame {
     console.log('🎮 Setting up event listeners...');
     
     const buyTab = document.getElementById('buyTab');
+    const boostersTab = document.getElementById('boostersTab');
     const sellTab = document.getElementById('sellTab');
     
     if (buyTab) {
@@ -775,6 +1039,15 @@ class FarpostGame {
         this.gameState.activeTab = 'buy';
         document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
         buyTab.classList.add('active');
+        this.updateUI();
+      };
+    }
+    
+    if (boostersTab) {
+      boostersTab.onclick = () => {
+        this.gameState.activeTab = 'boosters';
+        document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+        boostersTab.classList.add('active');
         this.updateUI();
       };
     }
@@ -822,14 +1095,19 @@ class FarpostGame {
       const now = Date.now();
       let updated = false;
       
-      this.gameState.cells.forEach(cell => {
+      this.gameState.cells.forEach((cell, index) => {
         if (cell.extractionEndTime && now >= cell.extractionEndTime && !cell.isReady) {
+          console.log(`🔔 Cell ${index} (${cell.resourceType}) extraction completed! Marking as ready.`);
           cell.isReady = true;
           updated = true;
+          
+          // Show notification that resource is ready
+          this.showNotification(`${cell.resourceType} ready for collection in cell ${index}!`, 'success');
         }
       });
       
       if (updated) {
+        console.log('🔄 Updating UI due to newly ready resources');
         this.updateUI();
         this.saveGameState();
       }
