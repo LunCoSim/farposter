@@ -23,12 +23,18 @@
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Content-Security-Policy = "frame-ancestors 'self' https://*.farcaster.xyz https://*.warpcast.com https://warpcast.com; script-src 'self' 'unsafe-inline' https://esm.sh https://cdn.skypack.dev; object-src 'none'; base-uri 'self';"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    X-Frame-Options = "ALLOWALL"
+    Content-Security-Policy = "frame-ancestors *; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:; object-src 'none'; base-uri 'self';"
 
 [[headers]]
   for = "/index.html"
   [headers.values]
     X-Frame-Options = "ALLOWALL"
+    Content-Security-Policy = "frame-ancestors *; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: data:; object-src 'none'; base-uri 'self';"
 
 [[headers]]
   for = "/.well-known/farcaster.json"
