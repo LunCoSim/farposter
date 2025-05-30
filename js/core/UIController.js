@@ -1,0 +1,667 @@
+/**
+ * UIController - Handles all UI updates and interactions
+ * Separates UI concerns from game logic for better maintainability
+ */
+class UIController {
+  constructor(stateManager, resourceManager) {
+    this.stateManager = stateManager;
+    this.resourceManager = resourceManager;
+    this.progressUpdateInterval = null;
+    
+    // Bind event handlers
+    this.setupEventListeners();
+    
+    // Listen to state changes for UI updates
+    this.stateManager.addEventListener('stateChange', () => {
+      this.updateUI();
+    });
+    
+    this.stateManager.addEventListener('levelUp', (data) => {
+      this.showLevelUpNotification(data.oldLevel, data.newLevel);
+    });
+    
+    this.stateManager.addEventListener('expeditionDeployed', (data) => {
+      this.showNotification(`${data.resourceType} expedition deployed! Extract time: ${Math.ceil(data.duration/60000)}m`, 'success');
+    });
+    
+    this.stateManager.addEventListener('resourceCollected', (data) => {
+      this.showNotification(`Collected ${data.resourceType}! (+${data.xpGained} XP)`, 'success');
+    });
+    
+    this.stateManager.addEventListener('extractionComplete', (data) => {
+      this.showNotification(`${data.resourceType} extraction complete! Click to collect.`, 'info');
+    });
+  }
+
+  // Set up event listeners
+  setupEventListeners() {
+    // Tab switching
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('tab-btn')) {
+        const tab = e.target.dataset.tab;
+        this.switchTab(tab);
+      }
+    });
+
+    // Start progress update interval
+    this.startProgressUpdates();
+  }
+
+  // Update the entire UI
+  updateUI() {
+    this.updateHeader();
+    this.updateGrid();
+    this.updateInventory();
+    this.updateTabContent();
+    this.updateSelectionStatus();
+  }
+
+  // Update header with player stats
+  updateHeader() {
+    const state = this.stateManager.getState();
+    
+    // Update level
+    const levelElement = document.getElementById('playerLevel');
+    if (levelElement) {
+      levelElement.textContent = state.level;
+    }
+
+    // Update XP
+    const xpElement = document.getElementById('playerXP');
+    if (xpElement) {
+      xpElement.textContent = state.xp;
+    }
+
+    // Update points
+    const pointsElement = document.getElementById('playerPoints');
+    if (pointsElement) {
+      pointsElement.textContent = state.points;
+    }
+
+    // Update owned cells
+    const cellsElement = document.getElementById('ownedCells');
+    if (cellsElement) {
+      cellsElement.textContent = `${state.ownedCells}/${state.maxCells}`;
+    }
+
+    // Update XP progress bar
+    this.updateXPProgressBar(state);
+  }
+
+  // Update XP progress bar
+  updateXPProgressBar(state) {
+    const progressBar = document.getElementById('xpProgress');
+    if (!progressBar) return;
+
+    const config = this.stateManager.config;
+    const currentLevel = state.level;
+    const currentXP = state.xp;
+    
+    if (currentLevel >= config.levelThresholds.length) {
+      // Max level reached
+      progressBar.style.width = '100%';
+      return;
+    }
+
+    const currentThreshold = config.levelThresholds[currentLevel - 1] || 0;
+    const nextThreshold = config.levelThresholds[currentLevel] || config.levelThresholds[config.levelThresholds.length - 1];
+    
+    const progressInLevel = currentXP - currentThreshold;
+    const totalNeededForLevel = nextThreshold - currentThreshold;
+    const progress = Math.min(100, (progressInLevel / totalNeededForLevel) * 100);
+    
+    progressBar.style.width = `${progress}%`;
+  }
+
+  // Update the hexagonal grid
+  updateGrid() {
+    const grid = document.getElementById('hexGrid');
+    if (!grid) return;
+
+    const state = this.stateManager.getState();
+    
+    // Update each cell
+    state.cells.forEach((cell, index) => {
+      const cellElement = grid.children[index];
+      if (cellElement) {
+        this.updateCellDisplay(cellElement, cell, index);
+      }
+    });
+  }
+
+  // Update individual cell display
+  updateCellDisplay(element, cell, index) {
+    const state = this.stateManager.getState();
+    element.className = 'hex-cell tooltip';
+    element.innerHTML = '';
+    
+    if (!cell.owned) {
+      const config = this.stateManager.config;
+      const canBuy = state.points >= config.cellPurchaseCost && state.ownedCells < state.maxCells;
+      if (canBuy) {
+        element.classList.add('available');
+        element.textContent = '+';
+        element.dataset.tooltip = `Click to buy for ${config.cellPurchaseCost} pts`;
+      } else {
+        element.classList.add('unavailable');
+        element.textContent = '🔒';
+        if (state.ownedCells >= state.maxCells) {
+          element.dataset.tooltip = 'Max cells reached for your level';
+        } else {
+          element.dataset.tooltip = `Not enough points (need ${config.cellPurchaseCost})`;
+        }
+      }
+    } else if (cell.isReady) {
+      element.classList.add('ready');
+      const config = this.stateManager.config.resources[cell.resourceType];
+      element.textContent = config?.symbol || '⭐';
+      element.dataset.tooltip = `${cell.resourceType} - Ready to collect!`;
+    } else if (cell.extractionStartTime) {
+      element.classList.add('extracting');
+      const config = this.stateManager.config.resources[cell.resourceType];
+      element.textContent = config?.symbol || '⚡';
+      
+      const timer = document.createElement('div');
+      timer.className = 'timer';
+      element.appendChild(timer);
+      
+      const progressOverlay = document.createElement('div');
+      progressOverlay.className = 'progress-overlay';
+      element.appendChild(progressOverlay);
+      
+      this.updateCellTimer(element, cell);
+      element.dataset.tooltip = `${cell.resourceType} - Extracting...`;
+    } else {
+      element.classList.add('owned');
+      
+      // Check if cell has a booster applied
+      const cellBooster = state.boostedCells[index];
+      if (cellBooster && cellBooster.endTime > Date.now()) {
+        element.classList.add('booster-target');
+        const boosterConfig = this.stateManager.config.boosters[cellBooster.boosterType];
+        element.textContent = boosterConfig?.symbol || '🚀';
+        const timeRemaining = Math.ceil((cellBooster.endTime - Date.now()) / 1000 / 60);
+        element.dataset.tooltip = `${cellBooster.boosterType} applied - ${timeRemaining}m remaining`;
+      } else {
+        element.textContent = '⚡';
+        element.dataset.tooltip = 'Owned cell - Ready for expedition';
+      }
+    }
+
+    // Update click handler
+    element.onclick = () => this.handleCellClick(index);
+  }
+
+  // Update cell timer and progress
+  updateCellTimer(element, cell) {
+    const timer = element.querySelector('.timer');
+    const progressOverlay = element.querySelector('.progress-overlay');
+    
+    if (timer && progressOverlay) {
+      const progressData = this.resourceManager.getExtractionProgress(parseInt(element.dataset.index));
+      
+      if (progressData) {
+        progressOverlay.style.height = `${progressData.progress}%`;
+        
+        const totalMinutes = Math.floor(progressData.timeRemaining / 60000);
+        const seconds = Math.floor((progressData.timeRemaining % 60000) / 1000);
+        const timeStr = `${totalMinutes}:${seconds.toString().padStart(2, '0')}`;
+        timer.textContent = timeStr;
+      }
+    }
+  }
+
+  // Handle cell clicks
+  handleCellClick(index) {
+    const state = this.stateManager.getState();
+    const cell = state.cells[index];
+    
+    try {
+      if (!cell.owned) {
+        this.stateManager.purchaseCell(index);
+        return;
+      }
+      
+      if (cell.isReady) {
+        this.resourceManager.collectResource(index);
+        return;
+      }
+      
+      if (state.mode === 'deploy' && state.selectedExpedition) {
+        this.resourceManager.deployExpedition(index, state.selectedExpedition);
+        return;
+      }
+      
+      if (state.mode === 'booster' && state.selectedBooster && cell.extractionStartTime) {
+        this.resourceManager.applyBooster(index, state.selectedBooster);
+        return;
+      }
+      
+      if (cell.extractionStartTime) {
+        if (state.selectedBooster) {
+          this.resourceManager.applyBooster(index, state.selectedBooster);
+        } else {
+          this.showNotification('This cell is already extracting! Use boosters to speed it up.', 'warning');
+        }
+        return;
+      }
+      
+      this.showNotification('Cell is ready for expedition. Purchase and deploy expeditions from the Buy tab!', 'info');
+    } catch (error) {
+      this.showNotification(error.message, 'error');
+    }
+  }
+
+  // Update inventory display
+  updateInventory() {
+    this.updateResourceInventory();
+    this.updateExpeditionInventory();
+    this.updateBoosterInventory();
+  }
+
+  // Update resource inventory
+  updateResourceInventory() {
+    const container = document.getElementById('resourceInventory');
+    if (!container) return;
+
+    const state = this.stateManager.getState();
+    container.innerHTML = '<div class="panel-title">Resources</div>';
+
+    Object.entries(state.resources).forEach(([resourceType, amount]) => {
+      if (amount > 0) {
+        const config = this.stateManager.config.resources[resourceType];
+        const item = document.createElement('div');
+        item.className = 'resource-item';
+        item.innerHTML = `
+          <div>
+            <div class="resource-name">${resourceType}</div>
+            <div class="resource-value">${config.value} pts each</div>
+          </div>
+          <div class="resource-amount">${amount}</div>
+        `;
+        item.onclick = () => this.sellResource(resourceType);
+        container.appendChild(item);
+      }
+    });
+
+    if (Object.values(state.resources).every(amount => amount === 0)) {
+      const emptyMessage = document.createElement('div');
+      emptyMessage.className = 'empty-message';
+      emptyMessage.textContent = 'No resources collected yet';
+      container.appendChild(emptyMessage);
+    }
+  }
+
+  // Update expedition inventory
+  updateExpeditionInventory() {
+    const container = document.getElementById('expeditionInventory');
+    if (!container) return;
+
+    const state = this.stateManager.getState();
+    container.innerHTML = '<div class="panel-title">Expeditions</div>';
+
+    Object.entries(state.expeditions).forEach(([resourceType, amount]) => {
+      if (amount > 0) {
+        const config = this.stateManager.config.resources[resourceType];
+        const isSelected = state.selectedExpedition === resourceType;
+        
+        const item = document.createElement('div');
+        item.className = `expedition-item ${isSelected ? 'selected' : ''}`;
+        item.innerHTML = `
+          <div>
+            <div class="expedition-name">${resourceType}</div>
+            <div class="expedition-info">${config.time}m extraction</div>
+          </div>
+          <div class="expedition-amount">${amount}</div>
+        `;
+        item.onclick = () => this.selectExpedition(resourceType);
+        container.appendChild(item);
+      }
+    });
+
+    if (Object.values(state.expeditions).every(amount => amount === 0)) {
+      const emptyMessage = document.createElement('div');
+      emptyMessage.className = 'empty-message';
+      emptyMessage.textContent = 'No expeditions owned';
+      container.appendChild(emptyMessage);
+    }
+  }
+
+  // Update booster inventory
+  updateBoosterInventory() {
+    const container = document.getElementById('boosterInventory');
+    if (!container) return;
+
+    const state = this.stateManager.getState();
+    container.innerHTML = '<div class="panel-title">Boosters</div>';
+
+    Object.entries(state.boosters).forEach(([boosterType, amount]) => {
+      if (amount > 0) {
+        const config = this.stateManager.config.boosters[boosterType];
+        const isSelected = state.selectedBooster === boosterType;
+        
+        const item = document.createElement('div');
+        item.className = `booster-item ${isSelected ? 'selected' : ''}`;
+        item.innerHTML = `
+          <div>
+            <div class="booster-name">${config.symbol} ${boosterType}</div>
+            <div class="booster-effect">${config.effect}</div>
+          </div>
+          <div class="booster-amount">${amount}</div>
+        `;
+        item.onclick = () => this.selectBooster(boosterType);
+        container.appendChild(item);
+      }
+    });
+
+    if (Object.values(state.boosters).every(amount => amount === 0)) {
+      const emptyMessage = document.createElement('div');
+      emptyMessage.className = 'empty-message';
+      emptyMessage.textContent = 'No boosters owned';
+      container.appendChild(emptyMessage);
+    }
+  }
+
+  // Update tab content (buy/boosters tabs)
+  updateTabContent() {
+    const state = this.stateManager.getState();
+    const tabContent = document.getElementById('tabContent');
+    if (!tabContent) return;
+    
+    if (state.activeTab === 'buy') {
+      this.renderBuyTab(tabContent);
+    } else if (state.activeTab === 'boosters') {
+      this.renderBoostersTab(tabContent);
+    }
+  }
+
+  // Render buy tab content
+  renderBuyTab(container) {
+    const state = this.stateManager.getState();
+    container.innerHTML = '<div class="panel-title">Purchase Expeditions</div>';
+    
+    Object.entries(this.stateManager.config.resources).forEach(([resourceType, config]) => {
+      const canAfford = state.points >= config.cost;
+      const levelOk = state.level >= config.level;
+      const isDisabled = !canAfford || !levelOk;
+      
+      const item = document.createElement('div');
+      item.className = `resource-item ${isDisabled ? 'disabled' : ''}`;
+      item.innerHTML = `
+        <div>
+          <div class="resource-name">${resourceType}</div>
+          <div class="resource-value">${config.value} pts reward | ${config.time}m duration</div>
+          <div class="resource-cost">Cost: ${config.cost} pts</div>
+          ${!levelOk ? `<div class="resource-cost" style="color: #f44336;">Requires Level ${config.level}</div>` : ''}
+        </div>
+        <div class="resource-amount">Buy</div>
+      `;
+      
+      if (!isDisabled) {
+        item.onclick = () => this.purchaseExpedition(resourceType);
+      }
+      
+      container.appendChild(item);
+    });
+  }
+
+  // Render boosters tab content
+  renderBoostersTab(container) {
+    const state = this.stateManager.getState();
+    container.innerHTML = '<div class="panel-title">Purchase Boosters</div>';
+    
+    Object.entries(this.stateManager.config.boosters).forEach(([boosterType, config]) => {
+      // Skip non-purchasable boosters
+      if (config.purchasable === false) return;
+      
+      const canAfford = state.points >= config.cost;
+      const levelOk = state.level >= config.level;
+      const isDisabled = !canAfford || !levelOk;
+      
+      const item = document.createElement('div');
+      item.className = `booster-item ${isDisabled ? 'disabled' : ''}`;
+      item.innerHTML = `
+        <div class="booster-info">
+          <div class="booster-name">${config.symbol} ${boosterType}</div>
+          <div class="booster-effect">${config.effect}</div>
+          <div class="booster-cost">Cost: ${config.cost} pts</div>
+          ${!levelOk ? `<div class="booster-cost" style="color: #f44336;">Requires Level ${config.level}</div>` : ''}
+        </div>
+        <div class="booster-amount">Buy</div>
+      `;
+      
+      if (!isDisabled) {
+        item.onclick = () => this.purchaseBooster(boosterType);
+      }
+      
+      container.appendChild(item);
+    });
+  }
+
+  // Update selection status display
+  updateSelectionStatus() {
+    const state = this.stateManager.getState();
+    const statusElement = document.getElementById('selectionStatus');
+    if (!statusElement) return;
+
+    if (state.selectedExpedition) {
+      statusElement.textContent = `Selected: ${state.selectedExpedition} expedition - Click cells to deploy`;
+      statusElement.className = 'selection-status selected';
+    } else if (state.selectedBooster) {
+      statusElement.textContent = `Selected: ${state.selectedBooster} - Click extracting cells to boost`;
+      statusElement.className = 'selection-status selected';
+    } else {
+      statusElement.textContent = 'No selection - Purchase expeditions and boosters to get started';
+      statusElement.className = 'selection-status';
+    }
+  }
+
+  // Switch active tab
+  switchTab(tabName) {
+    const state = this.stateManager.getState();
+    this.stateManager.updateState({ activeTab: tabName });
+
+    // Update tab button states
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tabName);
+    });
+  }
+
+  // Purchase expedition
+  purchaseExpedition(resourceType) {
+    try {
+      this.stateManager.purchaseExpedition(resourceType);
+      this.showNotification(`Purchased ${resourceType} expedition!`, 'success');
+    } catch (error) {
+      this.showNotification(error.message, 'error');
+    }
+  }
+
+  // Purchase booster
+  purchaseBooster(boosterType) {
+    try {
+      this.stateManager.purchaseBooster(boosterType);
+      this.showNotification(`Purchased ${boosterType}!`, 'success');
+    } catch (error) {
+      this.showNotification(error.message, 'error');
+    }
+  }
+
+  // Select expedition for deployment
+  selectExpedition(resourceType) {
+    const state = this.stateManager.getState();
+    
+    if (state.expeditions[resourceType] === 0) {
+      this.showNotification(`No ${resourceType} expeditions in inventory!`, 'error');
+      return;
+    }
+    
+    if (state.selectedExpedition === resourceType) {
+      this.stateManager.updateState({
+        selectedExpedition: null,
+        mode: 'select'
+      });
+      this.showNotification(`Deselected ${resourceType} expedition.`, 'info');
+    } else {
+      this.stateManager.updateState({
+        selectedExpedition: resourceType,
+        selectedBooster: null,
+        mode: 'deploy'
+      });
+      this.showNotification(`Selected ${resourceType} expedition. Click cells to deploy!`, 'success');
+    }
+  }
+
+  // Select booster for usage
+  selectBooster(boosterType) {
+    const state = this.stateManager.getState();
+    
+    if (state.boosters[boosterType] === 0) {
+      this.showNotification(`No ${boosterType} boosters in inventory!`, 'error');
+      return;
+    }
+    
+    if (state.selectedBooster === boosterType) {
+      this.stateManager.updateState({
+        selectedBooster: null,
+        mode: 'select'
+      });
+      this.showNotification(`Deselected ${boosterType}.`, 'info');
+    } else {
+      this.stateManager.updateState({
+        selectedBooster: boosterType,
+        selectedExpedition: null,
+        mode: 'booster'
+      });
+      
+      if (boosterType === 'Instant Extract') {
+        this.showNotification(`Selected ${boosterType}. Click extracting cells to boost them instantly!`, 'success');
+      } else {
+        this.showNotification(`Selected ${boosterType}. Click ongoing expeditions to speed them up!`, 'success');
+      }
+    }
+  }
+
+  // Sell resource
+  sellResource(resourceType) {
+    try {
+      const result = this.resourceManager.sellResources(resourceType);
+      this.showNotification(`Sold ${result.amount} ${resourceType} for ${result.pointsGained} points! (+${result.xpGained} XP)`, 'success');
+    } catch (error) {
+      this.showNotification(error.message, 'error');
+    }
+  }
+
+  // Start progress updates for extraction timers
+  startProgressUpdates() {
+    if (this.progressUpdateInterval) {
+      clearInterval(this.progressUpdateInterval);
+    }
+
+    this.progressUpdateInterval = setInterval(() => {
+      this.updateExtractionProgress();
+    }, 1000);
+  }
+
+  // Update extraction progress for all active cells
+  updateExtractionProgress() {
+    const state = this.stateManager.getState();
+    const grid = document.getElementById('hexGrid');
+    if (!grid) return;
+
+    state.cells.forEach((cell, index) => {
+      if (cell.extractionStartTime && !cell.isReady) {
+        const cellElement = grid.children[index];
+        if (cellElement) {
+          this.updateCellTimer(cellElement, cell);
+        }
+      }
+    });
+  }
+
+  // Show notification to user
+  showNotification(message, type = 'info', duration = 5000) {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    
+    notification.style.cssText = `
+      position: fixed;
+      top: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 16px 24px;
+      border-radius: 12px;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      z-index: 10000;
+      max-width: 500px;
+      min-width: 250px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      border: 2px solid rgba(255,255,255,0.2);
+      opacity: 0;
+      transition: all 0.4s ease-in-out;
+      backdrop-filter: blur(10px);
+    `;
+
+    switch (type) {
+      case 'success':
+        notification.style.backgroundColor = 'rgba(76, 175, 80, 0.95)';
+        notification.style.borderColor = '#4CAF50';
+        break;
+      case 'error':
+        notification.style.backgroundColor = 'rgba(244, 67, 54, 0.95)';
+        notification.style.borderColor = '#f44336';
+        break;
+      case 'warning':
+        notification.style.backgroundColor = 'rgba(255, 152, 0, 0.95)';
+        notification.style.borderColor = '#ff9800';
+        break;
+      default:
+        notification.style.backgroundColor = 'rgba(33, 150, 243, 0.95)';
+        notification.style.borderColor = '#2196F3';
+    }
+
+    document.body.appendChild(notification);
+
+    // Animate in
+    setTimeout(() => {
+      notification.style.opacity = '1';
+      notification.style.transform = 'translateX(-50%) translateY(0) scale(1)';
+    }, 50);
+
+    setTimeout(() => {
+      if (notification.parentNode) {
+        // Animate out
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(-50%) translateY(-30px) scale(0.9)';
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 400);
+      }
+    }, duration);
+  }
+
+  // Show level up notification
+  showLevelUpNotification(oldLevel, newLevel) {
+    this.showNotification(`🎉 Level Up! You are now level ${newLevel}!`, 'success', 8000);
+  }
+
+  // Clean up
+  destroy() {
+    if (this.progressUpdateInterval) {
+      clearInterval(this.progressUpdateInterval);
+    }
+  }
+}
+
+// Export for both browser and Node.js environments
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = UIController;
+} else {
+  window.UIController = UIController;
+} 

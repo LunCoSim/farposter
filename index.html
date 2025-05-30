@@ -1376,7 +1376,141 @@
     <script src="js/auth.js"></script>
     <script src="js/tutorial.js"></script>
     <script src="js/achievements.js"></script>
-    <script src="js/game.js"></script>
+    
+    <!-- New modular architecture -->
+    <script src="js/core/GameStateManager.js"></script>
+    <script src="js/core/ResourceManager.js"></script>
+    <script src="js/core/UIController.js"></script>
+    <script src="js/core/GameEngine.js"></script>
+    
+    <!-- Legacy compatibility layer and game initialization -->
+    <script>
+        // Global game instance
+        let game = null;
+
+        // Initialize game when page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Create and initialize the new game engine
+                game = new GameEngine();
+                await game.init();
+                
+                // Expose game instance globally for legacy compatibility
+                window.game = game;
+                
+                // Legacy function mappings for backward compatibility
+                window.resetGame = () => game.resetGame();
+                window.resetTutorial = () => {
+                    if (game.tutorial) {
+                        game.tutorial.reset();
+                    }
+                };
+                window.toggleDebug = () => {
+                    const debugPanel = document.getElementById('debugPanel');
+                    if (debugPanel) {
+                        debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+                    }
+                };
+                window.showAchievements = () => {
+                    if (game.achievements) {
+                        game.achievements.showAchievements();
+                    }
+                };
+                window.hideAchievements = () => {
+                    const panel = document.getElementById('achievementsPanel');
+                    if (panel) panel.style.display = 'none';
+                };
+                window.shareProgress = () => {
+                    if (game.achievements) {
+                        game.achievements.shareProgress();
+                    }
+                };
+                window.skipTutorial = () => {
+                    if (game.tutorial) {
+                        game.tutorial.skipTutorial();
+                    }
+                };
+                window.hideTutorialModal = () => {
+                    if (game.tutorial) {
+                        game.tutorial.hideTutorialModal();
+                    }
+                };
+
+                // Setup debug speed slider
+                const speedSlider = document.getElementById('speedSlider');
+                if (speedSlider) {
+                    speedSlider.addEventListener('input', (e) => {
+                        const speed = parseInt(e.target.value);
+                        const state = game.getGameState();
+                        game.stateManager.updateState({ debugSpeed: speed });
+                        console.log(`🚀 Debug speed set to ${speed}x`);
+                    });
+                }
+
+                // Update header elements mapping
+                const updateHeaderMapping = () => {
+                    const state = game.getGameState();
+                    
+                    // Map new state to old element IDs
+                    const levelEl = document.getElementById('level');
+                    const xpEl = document.getElementById('xp');
+                    const pointsEl = document.getElementById('points');
+                    const cellsEl = document.getElementById('cells');
+                    const xpProgressEl = document.getElementById('xp-progress');
+                    
+                    if (levelEl) levelEl.textContent = state.level;
+                    if (pointsEl) pointsEl.textContent = state.points;
+                    if (cellsEl) cellsEl.textContent = `${state.ownedCells} / ${state.maxCells}`;
+                    
+                    // Calculate XP display
+                    const config = game.getGameConfig();
+                    const currentLevel = state.level;
+                    const currentXP = state.xp;
+                    
+                    if (currentLevel >= config.levelThresholds.length) {
+                        if (xpEl) xpEl.textContent = `${currentXP} / MAX`;
+                        if (xpProgressEl) xpProgressEl.style.width = '100%';
+                    } else {
+                        const currentThreshold = config.levelThresholds[currentLevel - 1] || 0;
+                        const nextThreshold = config.levelThresholds[currentLevel] || config.levelThresholds[config.levelThresholds.length - 1];
+                        
+                        if (xpEl) xpEl.textContent = `${currentXP} / ${nextThreshold}`;
+                        
+                        const progressInLevel = currentXP - currentThreshold;
+                        const totalNeededForLevel = nextThreshold - currentThreshold;
+                        const progress = Math.min(100, (progressInLevel / totalNeededForLevel) * 100);
+                        
+                        if (xpProgressEl) xpProgressEl.style.width = `${progress}%`;
+                    }
+                };
+
+                // Listen for state changes to update header
+                game.stateManager.addEventListener('stateChange', updateHeaderMapping);
+                
+                // Initial header update
+                updateHeaderMapping();
+                
+                console.log('🎮 Farpost Game loaded successfully with new architecture!');
+                
+            } catch (error) {
+                console.error('Failed to initialize game:', error);
+                
+                // Fallback to display error message
+                document.body.innerHTML = `
+                    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #1a1a2e; color: white; font-family: Arial;">
+                        <div style="text-align: center; padding: 40px; background: rgba(0,0,0,0.5); border-radius: 15px;">
+                            <h2>🌙 Farpost Loading Error</h2>
+                            <p>Failed to initialize the game. Please refresh the page.</p>
+                            <p style="color: #aaa; font-size: 12px;">Error: ${error.message}</p>
+                            <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #4CAF50; border: none; border-radius: 5px; color: white; cursor: pointer;">
+                                Refresh Page
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    </script>
 
 </body>
 </html> 
