@@ -784,6 +784,125 @@
             font-weight: bold;
         }
 
+        /* New Inventory Styling for Deployment Center */
+        .inventory-section {
+            margin-bottom: 20px;
+        }
+
+        .inventory-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin: 8px 0;
+            background: rgba(58, 58, 58, 0.8);
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .inventory-item:hover {
+            background: rgba(68, 68, 68, 0.9);
+            transform: translateX(3px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .inventory-item.selected {
+            background: rgba(76, 175, 80, 0.2);
+            border-left-color: #8BC34A;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+            animation: selectedGlow 2s ease-in-out infinite;
+        }
+
+        .expedition-item {
+            border-left-color: #2196F3;
+        }
+
+        .expedition-item.selected {
+            background: rgba(33, 150, 243, 0.2);
+            border-left-color: #64B5F6;
+            box-shadow: 0 0 15px rgba(33, 150, 243, 0.4);
+        }
+
+        .booster-item {
+            border-left-color: #FF9800;
+        }
+
+        .booster-item.selected {
+            background: rgba(255, 152, 0, 0.2);
+            border-left-color: #FFB74D;
+            box-shadow: 0 0 15px rgba(255, 152, 0, 0.4);
+        }
+
+        .item-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .item-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .item-details {
+            font-size: 12px;
+            color: #aaa;
+            opacity: 0.9;
+        }
+
+        .item-amount {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+            padding: 4px 8px;
+            border-radius: 6px;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .expedition-item .item-amount {
+            color: #2196F3;
+            background: rgba(33, 150, 243, 0.1);
+        }
+
+        .booster-item .item-amount {
+            color: #FF9800;
+            background: rgba(255, 152, 0, 0.1);
+        }
+
+        .empty-message {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+            background: rgba(58, 58, 58, 0.3);
+            border-radius: 8px;
+            border: 2px dashed #444;
+        }
+
+        @keyframes selectedGlow {
+            0%, 100% { 
+                box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+            }
+            50% { 
+                box-shadow: 0 0 25px rgba(76, 175, 80, 0.6);
+            }
+        }
+
+        /* Update resource-total styling for sell tab */
+        .resource-total {
+            font-size: 11px;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
         /* Booster & Market Panel */
         .booster-panel {
             background: rgba(42, 42, 42, 0.9);
@@ -826,7 +945,7 @@
             background: rgba(76, 175, 80, 0.9);
         }
 
-        .tab {
+        .tab-btn {
             flex: 1;
             padding: 10px;
             background: #3a3a3a;
@@ -837,16 +956,16 @@
             font-size: 12px;
         }
 
-        .tab.active {
+        .tab-btn.active {
             background: #4CAF50;
             color: white;
         }
 
-        .tab:first-child {
+        .tab-btn:first-child {
             border-radius: 8px 0 0 8px;
         }
 
-        .tab:last-child {
+        .tab-btn:last-child {
             border-radius: 0 8px 8px 0;
         }
 
@@ -1249,9 +1368,9 @@
         <!-- Booster & Market Panel -->
         <div class="booster-panel">
             <div class="tab-container">
-                <button class="tab active" id="buyTab">⛏️ Buy</button>
-                <button class="tab" id="boostersTab">⚡ Boosters</button>
-                <button class="tab" id="sellTab">💰 Sell</button>
+                <button class="tab-btn active" data-tab="buy">⛏️ Buy</button>
+                <button class="tab-btn" data-tab="boosters">⚡ Boosters</button>
+                <button class="tab-btn" data-tab="sell">💰 Sell</button>
             </div>
             
             <div id="tabContent">

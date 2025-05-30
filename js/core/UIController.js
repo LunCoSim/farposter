@@ -252,117 +252,86 @@ class UIController {
     }
   }
 
-  // Update inventory display
+  // Update inventory display (deployment center - only expeditions and boosters)
   updateInventory() {
-    this.updateResourceInventory();
-    this.updateExpeditionInventory();
-    this.updateBoosterInventory();
-  }
-
-  // Update resource inventory
-  updateResourceInventory() {
-    const container = document.getElementById('resourceInventory');
+    const container = document.getElementById('resourceList');
     if (!container) return;
 
     const state = this.stateManager.getState();
-    container.innerHTML = '<div class="panel-title">Resources</div>';
+    container.innerHTML = '';
 
-    Object.entries(state.resources).forEach(([resourceType, amount]) => {
-      if (amount > 0) {
-        const config = this.stateManager.config.resources[resourceType];
-        const item = document.createElement('div');
-        item.className = 'resource-item';
-        item.innerHTML = `
-          <div>
-            <div class="resource-name">${resourceType}</div>
-            <div class="resource-value">${config.value} pts each</div>
-          </div>
-          <div class="resource-amount">${amount}</div>
-        `;
-        item.onclick = () => this.sellResource(resourceType);
-        container.appendChild(item);
-      }
-    });
-
-    if (Object.values(state.resources).every(amount => amount === 0)) {
-      const emptyMessage = document.createElement('div');
-      emptyMessage.className = 'empty-message';
-      emptyMessage.textContent = 'No resources collected yet';
-      container.appendChild(emptyMessage);
-    }
-  }
-
-  // Update expedition inventory
-  updateExpeditionInventory() {
-    const container = document.getElementById('expeditionInventory');
-    if (!container) return;
-
-    const state = this.stateManager.getState();
-    container.innerHTML = '<div class="panel-title">Expeditions</div>';
-
+    // Expeditions section
+    const expeditionSection = document.createElement('div');
+    expeditionSection.className = 'inventory-section';
+    expeditionSection.innerHTML = '<div class="panel-title">🚀 Expeditions</div>';
+    
+    let hasExpeditions = false;
     Object.entries(state.expeditions).forEach(([resourceType, amount]) => {
       if (amount > 0) {
+        hasExpeditions = true;
         const config = this.stateManager.config.resources[resourceType];
         const isSelected = state.selectedExpedition === resourceType;
         
         const item = document.createElement('div');
-        item.className = `expedition-item ${isSelected ? 'selected' : ''}`;
+        item.className = `inventory-item expedition-item ${isSelected ? 'selected' : ''}`;
         item.innerHTML = `
-          <div>
-            <div class="expedition-name">${resourceType}</div>
-            <div class="expedition-info">${config.time}m extraction</div>
+          <div class="item-info">
+            <div class="item-name">${resourceType}</div>
+            <div class="item-details">${config.time}m extraction</div>
           </div>
-          <div class="expedition-amount">${amount}</div>
+          <div class="item-amount">${amount}</div>
         `;
         item.onclick = () => this.selectExpedition(resourceType);
-        container.appendChild(item);
+        expeditionSection.appendChild(item);
       }
     });
 
-    if (Object.values(state.expeditions).every(amount => amount === 0)) {
+    if (!hasExpeditions) {
       const emptyMessage = document.createElement('div');
       emptyMessage.className = 'empty-message';
-      emptyMessage.textContent = 'No expeditions owned';
-      container.appendChild(emptyMessage);
+      emptyMessage.textContent = 'No expeditions owned - Purchase from Buy tab';
+      expeditionSection.appendChild(emptyMessage);
     }
-  }
 
-  // Update booster inventory
-  updateBoosterInventory() {
-    const container = document.getElementById('boosterInventory');
-    if (!container) return;
+    container.appendChild(expeditionSection);
 
-    const state = this.stateManager.getState();
-    container.innerHTML = '<div class="panel-title">Boosters</div>';
-
+    // Boosters section
+    const boosterSection = document.createElement('div');
+    boosterSection.className = 'inventory-section';
+    boosterSection.innerHTML = '<div class="panel-title">⚡ Boosters</div>';
+    
+    let hasBoosters = false;
     Object.entries(state.boosters).forEach(([boosterType, amount]) => {
       if (amount > 0) {
+        hasBoosters = true;
         const config = this.stateManager.config.boosters[boosterType];
         const isSelected = state.selectedBooster === boosterType;
         
         const item = document.createElement('div');
-        item.className = `booster-item ${isSelected ? 'selected' : ''}`;
+        item.className = `inventory-item booster-item ${isSelected ? 'selected' : ''}`;
         item.innerHTML = `
-          <div>
-            <div class="booster-name">${config.symbol} ${boosterType}</div>
-            <div class="booster-effect">${config.effect}</div>
+          <div class="item-info">
+            <div class="item-name">${config.symbol} ${boosterType}</div>
+            <div class="item-details">${config.effect}</div>
           </div>
-          <div class="booster-amount">${amount}</div>
+          <div class="item-amount">${amount}</div>
         `;
         item.onclick = () => this.selectBooster(boosterType);
-        container.appendChild(item);
+        boosterSection.appendChild(item);
       }
     });
 
-    if (Object.values(state.boosters).every(amount => amount === 0)) {
+    if (!hasBoosters) {
       const emptyMessage = document.createElement('div');
       emptyMessage.className = 'empty-message';
-      emptyMessage.textContent = 'No boosters owned';
-      container.appendChild(emptyMessage);
+      emptyMessage.textContent = 'No boosters owned - Purchase from Boosters tab';
+      boosterSection.appendChild(emptyMessage);
     }
+
+    container.appendChild(boosterSection);
   }
 
-  // Update tab content (buy/boosters tabs)
+  // Update tab content (buy/boosters/sell tabs)
   updateTabContent() {
     const state = this.stateManager.getState();
     const tabContent = document.getElementById('tabContent');
@@ -372,6 +341,8 @@ class UIController {
       this.renderBuyTab(tabContent);
     } else if (state.activeTab === 'boosters') {
       this.renderBoostersTab(tabContent);
+    } else if (state.activeTab === 'sell') {
+      this.renderSellTab(tabContent);
     }
   }
 
@@ -436,6 +407,39 @@ class UIController {
       
       container.appendChild(item);
     });
+  }
+
+  // Render sell tab content
+  renderSellTab(container) {
+    const state = this.stateManager.getState();
+    container.innerHTML = '<div class="panel-title">💰 Sell Resources</div>';
+    
+    let hasResources = false;
+    Object.entries(state.resources).forEach(([resourceType, amount]) => {
+      if (amount > 0) {
+        hasResources = true;
+        const config = this.stateManager.config.resources[resourceType];
+        const item = document.createElement('div');
+        item.className = 'resource-item';
+        item.innerHTML = `
+          <div>
+            <div class="resource-name">${resourceType}</div>
+            <div class="resource-value">${config.value} pts each</div>
+            <div class="resource-total">Total value: ${amount * config.value} pts</div>
+          </div>
+          <div class="resource-amount">${amount}</div>
+        `;
+        item.onclick = () => this.sellResource(resourceType);
+        container.appendChild(item);
+      }
+    });
+
+    if (!hasResources) {
+      const emptyMessage = document.createElement('div');
+      emptyMessage.className = 'empty-message';
+      emptyMessage.textContent = 'No resources to sell - Deploy expeditions to collect resources';
+      container.appendChild(emptyMessage);
+    }
   }
 
   // Update selection status display
@@ -542,16 +546,6 @@ class UIController {
     }
   }
 
-  // Sell resource
-  sellResource(resourceType) {
-    try {
-      const result = this.resourceManager.sellResources(resourceType);
-      this.showNotification(`Sold ${result.amount} ${resourceType} for ${result.pointsGained} points! (+${result.xpGained} XP)`, 'success');
-    } catch (error) {
-      this.showNotification(error.message, 'error');
-    }
-  }
-
   // Start progress updates for extraction timers
   startProgressUpdates() {
     if (this.progressUpdateInterval) {
@@ -649,6 +643,16 @@ class UIController {
   // Show level up notification
   showLevelUpNotification(oldLevel, newLevel) {
     this.showNotification(`🎉 Level Up! You are now level ${newLevel}!`, 'success', 8000);
+  }
+
+  // Sell resource
+  sellResource(resourceType) {
+    try {
+      const result = this.resourceManager.sellResources(resourceType);
+      this.showNotification(`Sold ${result.amount} ${resourceType} for ${result.pointsGained} points! (+${result.xpGained} XP)`, 'success');
+    } catch (error) {
+      this.showNotification(error.message, 'error');
+    }
   }
 
   // Clean up
