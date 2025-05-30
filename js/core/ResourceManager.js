@@ -132,11 +132,18 @@ class ResourceManager {
       newStats.heliumResourcesCollected++;
     }
 
+    // Clean up any boosters associated with this cell since the expedition is finished
+    const newBoostedCells = { ...state.boostedCells };
+    if (newBoostedCells[cellIndex]) {
+      delete newBoostedCells[cellIndex];
+    }
+
     this.stateManager.updateState({
       cells: newCells,
       resources: newResources,
       stats: newStats,
-      xp: state.xp + resourceConfig.xp
+      xp: state.xp + resourceConfig.xp,
+      boostedCells: newBoostedCells
     });
 
     // Check for level up
@@ -320,13 +327,20 @@ class ResourceManager {
     const newStats = { ...state.stats };
     newStats.boostersUsed++;
 
+    // Clean up any boosters associated with this cell since the expedition is instantly completed
+    const newBoostedCells = { ...state.boostedCells };
+    if (newBoostedCells[cellIndex]) {
+      delete newBoostedCells[cellIndex];
+    }
+
     this.stateManager.updateState({
       boosters: newBoosters,
       cells: newCells,
       stats: newStats,
       xp: state.xp + boosterConfig.useXP,
       selectedBooster: null,
-      mode: 'select'
+      mode: 'select',
+      boostedCells: newBoostedCells
     });
 
     // Clear the extraction timer

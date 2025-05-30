@@ -563,6 +563,25 @@ class UIController {
     const grid = document.getElementById('hexGrid');
     if (!grid) return;
 
+    // Clean up expired boosters
+    const currentTime = Date.now();
+    const newBoostedCells = { ...state.boostedCells };
+    let boostersExpired = false;
+
+    Object.keys(newBoostedCells).forEach(cellIndex => {
+      const booster = newBoostedCells[cellIndex];
+      if (booster && booster.endTime <= currentTime) {
+        delete newBoostedCells[cellIndex];
+        boostersExpired = true;
+      }
+    });
+
+    // Update state if any boosters expired
+    if (boostersExpired) {
+      this.stateManager.updateState({ boostedCells: newBoostedCells });
+    }
+
+    // Update cell displays and timers
     state.cells.forEach((cell, index) => {
       if (cell.extractionStartTime && !cell.isReady) {
         const cellElement = grid.children[index];
