@@ -53,7 +53,9 @@ class FarpostGame {
       debugSpeed: 1,
       // Booster tracking
       activeBooster: null,
-      boosterUsesRemaining: 0,
+      boosterEndTime: null, // When the active booster expires
+      boosterUsesRemaining: 0, // Legacy - will be removed after refactor
+      boostedCells: {}, // Track which cells have boosters applied: cellIndex -> { boosterType, endTime }
       // Tutorial system
       tutorial: {
         isActive: false,
@@ -325,8 +327,19 @@ class FarpostGame {
       element.dataset.tooltip = `${cell.resourceType} - Extracting...`;
     } else {
       element.classList.add('owned');
-      element.textContent = '⚡';
-      element.dataset.tooltip = 'Owned cell - Ready for expedition';
+      
+      // Check if cell has a booster applied
+      const cellBooster = this.gameState.boostedCells[index];
+      if (cellBooster && cellBooster.endTime > Date.now()) {
+        element.classList.add('booster-target');
+        const boosterConfig = this.getGameConfig().boosters[cellBooster.boosterType];
+        element.textContent = boosterConfig?.symbol || '🚀';
+        const timeRemaining = Math.ceil((cellBooster.endTime - Date.now()) / 1000 / 60);
+        element.dataset.tooltip = `${cellBooster.boosterType} applied - ${timeRemaining}m remaining`;
+      } else {
+        element.textContent = '⚡';
+        element.dataset.tooltip = 'Owned cell - Ready for expedition';
+      }
     }
   }
 
@@ -428,22 +441,6 @@ class FarpostGame {
     let extractionTime = resourceConfig.time * 60 * 1000; // Convert minutes to milliseconds
     extractionTime = Math.floor(extractionTime / this.gameState.debugSpeed);
     
-    // Apply active booster effect if available
-    if (this.gameState.activeBooster && this.gameState.boosterUsesRemaining > 0) {
-      const boosterConfig = this.getGameConfig().boosters[this.gameState.activeBooster];
-      if (boosterConfig && this.gameState.activeBooster !== 'Instant Extract') {
-        extractionTime = Math.floor(extractionTime / boosterConfig.speedMultiplier);
-        this.gameState.boosterUsesRemaining--;
-        
-        // Clear active booster if no uses remaining
-        if (this.gameState.boosterUsesRemaining <= 0) {
-          this.showNotification(`${this.gameState.activeBooster} effect expired!`, 'info');
-          this.gameState.activeBooster = null;
-          this.gameState.boosterUsesRemaining = 0;
-        }
-      }
-    }
-    
     // Deploy expedition
     this.gameState.expeditions[this.gameState.selectedExpedition]--;
     cell.resourceType = this.gameState.selectedExpedition;
@@ -533,6 +530,15 @@ class FarpostGame {
   updateUI() {
     console.log('🔄 Updating UI...');
     
+    // Clean up expired cell boosters
+    Object.keys(this.gameState.boostedCells).forEach(cellIndex => {
+      const cellBooster = this.gameState.boostedCells[cellIndex];
+      if (cellBooster.endTime <= Date.now()) {
+        delete this.gameState.boostedCells[cellIndex];
+        this.showNotification(`Booster expired on cell ${cellIndex}`, 'info');
+      }
+    });
+    
     // Update header stats
     const levelEl = document.getElementById('level');
     if (levelEl) levelEl.textContent = this.gameState.level;
@@ -583,7 +589,7 @@ class FarpostGame {
     }
     
     if (this.gameState.mode === 'booster' && this.gameState.selectedBooster) {
-      cellInfo.textContent = `Use ${this.gameState.selectedBooster} on extracting cells • Right-click or ESC to deselect`;
+      cellInfo.textContent = `Use ${this.gameState.selectedBooster} on ongoing expeditions • Right-click or ESC to deselect`;
       return;
     }
     
@@ -643,23 +649,6 @@ class FarpostGame {
       resourceList.appendChild(noExpeditions);
     }
 
-    // Show active booster effect
-    if (this.gameState.activeBooster && this.gameState.boosterUsesRemaining > 0) {
-      const activeBoosterDiv = document.createElement('div');
-      activeBoosterDiv.className = 'resource-item';
-      activeBoosterDiv.style.background = 'rgba(33, 150, 243, 0.2)';
-      activeBoosterDiv.style.borderLeft = '4px solid #2196F3';
-      const boosterConfig = this.getGameConfig().boosters[this.gameState.activeBooster];
-      activeBoosterDiv.innerHTML = `
-        <div>
-          <div class="resource-name">🚀 ${this.gameState.activeBooster} Active</div>
-          <div class="resource-value">${boosterConfig?.effect || 'Speed boost active'}</div>
-        </div>
-        <div class="resource-amount">${this.gameState.boosterUsesRemaining} uses left</div>
-      `;
-      resourceList.appendChild(activeBoosterDiv);
-    }
-
     // Add booster selection section
     const boosterTitle = document.createElement('div');
     boosterTitle.className = 'panel-title';
@@ -674,7 +663,7 @@ class FarpostGame {
       const isSelected = this.gameState.selectedBooster === boosterType;
       const hasBooster = amount > 0;
       const levelOk = this.gameState.level >= boosterConfig.level;
-      const canUse = hasBooster && !this.gameState.activeBooster && levelOk;
+      const canUse = hasBooster && levelOk;
       
       if (hasBooster) hasBoosters = true;
       
@@ -738,11 +727,6 @@ class FarpostGame {
       return;
     }
     
-    if (this.gameState.activeBooster) {
-      this.showNotification(`${this.gameState.activeBooster} is already active!`, 'warning');
-      return;
-    }
-    
     if (this.gameState.selectedBooster === boosterType) {
       this.gameState.selectedBooster = null;
       this.gameState.mode = 'select';
@@ -751,47 +735,96 @@ class FarpostGame {
       this.gameState.selectedBooster = boosterType;
       this.gameState.selectedExpedition = null;
       this.gameState.mode = 'booster';
-      this.showNotification(`Selected ${boosterType}. Click extracting cells to boost them!`, 'success');
+      
+      if (boosterType === 'Instant Extract') {
+        this.showNotification(`Selected ${boosterType}. Click extracting cells to boost them instantly!`, 'success');
+      } else {
+        this.showNotification(`Selected ${boosterType}. Click ongoing expeditions to speed them up!`, 'success');
+      }
     }
     
     this.updateUI();
   }
 
-  // Use booster on a cell
+  // Use booster - Per-cell application as per design document
   useBooster(cellIndex, boosterType) {
     const cell = this.gameState.cells[cellIndex];
     const boosterConfig = this.getGameConfig().boosters[boosterType];
     
-    if (!cell.extractionStartTime || cell.isReady) {
-      this.showNotification('Can only boost cells that are currently extracting!', 'error');
-      return;
-    }
-    
+    // Check if player has this booster
     if (this.gameState.boosters[boosterType] === 0) {
       this.showNotification(`No ${boosterType} boosters in inventory!`, 'error');
       return;
     }
-    
+
+    // Handle Instant Extract separately (works on currently extracting cells)
+    if (boosterType === 'Instant Extract') {
+      if (!cell.extractionStartTime || cell.isReady) {
+        this.showNotification('Can only use Instant Extract on cells that are currently extracting!', 'error');
+        return;
+      }
+
+      // Use the booster
+      this.gameState.boosters[boosterType]--;
+      
+      // Complete extraction instantly
+      cell.isReady = true;
+      cell.extractionEndTime = Date.now();
+      
+      this.showNotification(`${boosterType} used! Extraction completed instantly!`, 'success');
+      
+      // Track for achievements
+      this.achievements?.trackAction('booster_used');
+      
+      // Clear selection
+      this.gameState.selectedBooster = null;
+      this.gameState.mode = 'select';
+      
+      this.updateUI();
+      this.saveGameState();
+      return;
+    }
+
+    // Regular boosters (can only be applied to ongoing expeditions)
+    if (!cell.owned) {
+      this.showNotification('Can only apply boosters to owned cells!', 'error');
+      return;
+    }
+
+    // Boosters can only be applied to ongoing expeditions
+    if (!cell.extractionStartTime || cell.isReady) {
+      this.showNotification('Can only apply boosters to ongoing expeditions! Start an expedition first.', 'error');
+      return;
+    }
+
+    // Check if cell already has an active (non-expired) booster
+    const existingBooster = this.gameState.boostedCells[cellIndex];
+    if (existingBooster && existingBooster.endTime > Date.now()) {
+      this.showNotification('Cell already has an active booster! Wait for it to expire.', 'warning');
+      return;
+    }
+
     // Use the booster
     this.gameState.boosters[boosterType]--;
     
-    // Apply booster effect
-    if (boosterType === 'Instant Extract') {
-      // Instant extraction
-      cell.isReady = true;
-      cell.extractionEndTime = Date.now();
-      this.showNotification(`${boosterType} used! Extraction completed instantly!`, 'success');
-    } else {
-      // Speed boost effect
-      this.gameState.activeBooster = boosterType;
-      this.gameState.boosterUsesRemaining = boosterConfig.duration;
-      
-      // Reduce remaining time based on speed multiplier
+    // Apply booster to cell for 1 hour
+    this.gameState.boostedCells[cellIndex] = {
+      boosterType: boosterType,
+      endTime: Date.now() + (boosterConfig.duration * 1000)
+    };
+    
+    // Apply speed boost immediately to ongoing expedition
+    const resourceConfig = this.getGameConfig().resources[cell.resourceType];
+    
+    // Check tier restrictions
+    if (resourceConfig.level <= boosterConfig.tierMax) {
       const remaining = cell.extractionEndTime - Date.now();
       const newRemaining = Math.max(1000, remaining / boosterConfig.multiplier);
       cell.extractionEndTime = Date.now() + newRemaining;
       
-      this.showNotification(`${boosterType} activated! ${boosterConfig.multiplier}x speed for ${boosterConfig.duration} extraction(s)!`, 'success');
+      this.showNotification(`${boosterType} applied! Current extraction sped up ${boosterConfig.multiplier}x.`, 'success');
+    } else {
+      this.showNotification(`${boosterType} cannot boost ${cell.resourceType} (tier too high).`, 'warning');
     }
     
     // Track for achievements

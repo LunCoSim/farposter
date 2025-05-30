@@ -21,7 +21,7 @@ const config = {
         cost: 100, 
         multiplier: 2, 
         level: 1, 
-        duration: 7200, 
+        duration: 3600, 
         tierMax: 1,
         effect: '2x speed for 1 hour',
         symbol: '⚡'
@@ -30,7 +30,7 @@ const config = {
         cost: 250, 
         multiplier: 3, 
         level: 5, 
-        duration: 7200, 
+        duration: 3600, 
         tierMax: 5,
         effect: '3x speed for 1 hour',
         symbol: '⚡⚡'
@@ -39,7 +39,7 @@ const config = {
         cost: 500, 
         multiplier: 4, 
         level: 10, 
-        duration: 7200, 
+        duration: 3600, 
         tierMax: 10,
         effect: '4x speed for 1 hour',
         symbol: '⚡⚡⚡'
@@ -48,7 +48,7 @@ const config = {
         cost: 1000, 
         multiplier: 5, 
         level: 15, 
-        duration: 7200, 
+        duration: 3600, 
         tierMax: 15,
         effect: '5x speed for 1 hour',
         symbol: '🚀'
@@ -57,7 +57,7 @@ const config = {
         cost: 2000, 
         multiplier: 10, 
         level: 20, 
-        duration: 7200, 
+        duration: 3600, 
         tierMax: 20,
         effect: '10x speed for 1 hour',
         symbol: '🚀🚀'

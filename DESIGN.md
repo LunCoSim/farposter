@@ -65,20 +65,107 @@ Strategic Timing:
 | Ultimate Booster | 2000 | 1 hour | 10x | 20 | Level 20 resources |
 | Instant Extract | Cannot be purchased | Single use | Instant | 1 | All resources |
 
-Booster Properties:
-- Each booster can only be used on resources of its tier or lower
-- Boosters can be applied to multiple cells simultaneously
-- Booster effects stack multiplicatively with cell upgrades
-- Boosters cannot be used on already started expeditions
-- Instant Extract is a special booster that cannot be purchased and is only received as rewards (particularly during game start)
+#### Booster Application Mechanics
 
-Example Usage:
-- Basic Booster (2x) on Lunar Regolith: 5 min → 2.5 min
-- Advanced Booster (3x) on Titanium: 45 min → 15 min
-- Elite Booster (4x) on Rare Earth Elements: 90 min → 22.5 min
-- Master Booster (5x) on Platinum Group Metals: 120 min → 24 min
-- Ultimate Booster (10x) on Helium-3: 180 min → 18 min
+**Important: Boosters are applied PER-CELL, not globally!**
+
+**Speed Boosters (Basic, Advanced, Elite, Master, Ultimate):**
+1. **Purchase** booster from inventory using points
+2. **Select** booster from deployment panel
+3. **Apply to ongoing expedition** by clicking on a cell that is currently extracting
+4. **Immediate effect** - extraction time is reduced based on booster multiplier
+5. **Duration-based** - booster remains active for 1 hour from application
+6. **Single use per expedition** - each booster application affects one extraction
+
+**Instant Extract Booster:**
+1. **Select** Instant Extract from deployment panel
+2. **Click on extracting cell** (must be currently extracting)
+3. **Immediate completion** - extraction finishes instantly
+4. **Single use** - booster is consumed immediately
+
+#### Booster Rules and Restrictions:
+- **One active booster per cell**: Each cell can only have one active (non-expired) booster at a time
+- **Multiple cells**: Players can apply boosters to multiple different cells simultaneously
+- **Only for ongoing expeditions**: Speed boosters can only be applied to currently extracting cells
+- **Cannot boost empty cells**: Speed boosters cannot be applied to empty cells for future expeditions
+- **Cannot boost ready expeditions**: Speed boosters cannot be applied to completed extractions
+- **Expired boosters can be replaced**: When a booster expires, a new one can be applied to the same cell
+- **Tier restrictions**: Each booster can only boost resources of its tier or lower
+- **Duration**: Speed boosters remain active for 1 hour from application time
+- **Instant Extract exceptions**: Can be used on any extracting cell regardless of resource tier
+
+#### Detailed Workflow Examples:
+
+**Example 1 - Speed Booster on Running Expedition:**
+```
+1. Cell #5 is extracting Lunar Regolith (20 minutes remaining)
+2. Player selects Basic Booster from panel
+3. Player clicks on extracting Cell #5
+4. Extraction time reduced: 20min → 10min (2x speed bonus)
+5. Cell #5 shows 🚀 "Basic Booster applied - 60m remaining"
+6. Booster remains active for 1 hour
+```
+
+**Example 2 - Expired Booster Replacement:**
+```
+1. Cell #7 has expired Basic Booster during extraction
+2. Player selects Advanced Booster from panel
+3. Player clicks on extracting Cell #7 (expired booster is replaced)
+4. Extraction time reduced further with 3x speed bonus
+5. Cell #7 shows 🚀🚀 "Advanced Booster applied - 60m remaining"
+```
+
+**Example 3 - Tier Restriction:**
+```
+1. Player tries to apply Basic Booster (Level 1 tier) to Cell #3 extracting Titanium (Level 5)
+2. System shows: "Basic Booster cannot boost Titanium (tier too high)"
+3. Booster is not consumed, player can try with appropriate tier booster
+```
+
+**Example 4 - Instant Extract:**
+```
+1. Cell #7 is extracting Helium-3 (24 hours remaining)
+2. Player selects Instant Extract
+3. Player clicks on Cell #7
+4. Extraction completes immediately, resource ready for collection
+5. Instant Extract is consumed
+```
+
+#### Speed Calculation Examples:
+- Basic Booster (2x) on Lunar Regolith: 30min → 15min
+- Advanced Booster (3x) on Titanium: 12hours → 4hours
+- Elite Booster (4x) on Rare Earth Elements: 16hours → 4hours
+- Master Booster (5x) on Platinum Group Metals: 20hours → 4hours
+- Ultimate Booster (10x) on Helium-3: 24hours → 2.4hours
 - Instant Extract: Any extraction time → Complete immediately
+
+#### Strategic Considerations:
+- **Mid-expedition boost**: Apply boosters to running expeditions to speed up completion
+- **Resource tier matching**: Match booster tier to resource level for maximum efficiency
+- **Multiple expeditions**: Use different boosters on different cells for parallel extraction
+- **Timing**: Consider 1-hour expiration when planning booster usage
+- **Emergency completion**: Use Instant Extract for urgent resource collection
+- **Booster stacking**: Replace expired boosters on active extractions for continued speed bonus
+
+#### UI and Visual Indicators:
+**Cell States:**
+- **Empty owned cell**: ⚡ "Owned cell - Ready for expedition"
+- **Boosted cell**: 🚀 "Basic Booster applied - 45m remaining"  
+- **Extracting cell**: Resource symbol + timer "Iron Ore - Extracting..."
+- **Ready cell**: Resource symbol + glow "Iron Ore - Ready to collect!"
+
+**Booster Selection Flow:**
+1. Click on booster in "Use Boosters" section
+2. UI shows: "Selected Basic Booster. Click owned cells to apply booster for next expedition!"
+3. Valid cells highlight, invalid cells grayed out
+4. Click on valid cell to apply booster
+5. Cell updates visual state, booster deducted from inventory
+
+**Error Handling:**
+- "Can only apply boosters to owned cells!" (clicked non-owned cell)
+- "Can only apply boosters to ongoing expeditions! Start an expedition first." (clicked empty or ready cell)
+- "Cell already has an active booster! Wait for it to expire." (clicked cell with active booster)
+- "Basic Booster cannot boost Titanium (tier too high)" (tier mismatch)
 
 ### 2.3 Cell System
 | Level | Cells Available | Cell Purchase Cost | XP for Purchase |
@@ -124,7 +211,8 @@ Level Progression:
 | Start Expedition | Unlimited | Based on resource | Limited by available cells |
 | Collect Resources | Unlimited | Based on resource | Must wait for mining time |
 | Sell Resources | Unlimited | 5% of sale value | Instant transaction |
-| Apply Booster | Limited by inventory | 50 | One booster per cell |
+| Apply Speed Booster | Limited by inventory | 50 | Apply to owned cell, consumed on expedition start |
+| Use Instant Extract | Limited by inventory | 50 | Use on extracting cell, immediate effect |
 
 ### 3.2 Weekly Actions
 | Action | Frequency | XP Reward | Notes |
