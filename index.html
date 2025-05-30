@@ -1266,6 +1266,17 @@
         </div>
     </div>
 
+    <!-- Load Farcaster SDK for Mini App support -->
+    <script type="module">
+        try {
+            const { sdk } = await import('https://esm.sh/@farcaster/frame-sdk');
+            window.sdk = sdk;
+            console.log('🎯 Farcaster SDK loaded successfully via import');
+        } catch (error) {
+            console.warn('⚠️ Failed to load Farcaster SDK:', error);
+        }
+    </script>
+
     <!-- Include external scripts -->
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
@@ -1418,6 +1429,18 @@
             // Add Farcaster user info to header if in frame context
             if (isFrameContext) {
                 updateUserDisplay(farcasterIntegration.getUserInfo());
+            }
+            
+            // Call ready() for Farcaster Mini App to dismiss splash screen
+            if (window.sdk && window.sdk.actions && typeof window.sdk.actions.ready === 'function') {
+                try {
+                    await window.sdk.actions.ready();
+                    console.log('🎯 Farcaster Mini App ready() called successfully');
+                } catch (readyError) {
+                    console.warn('⚠️ Failed to call ready():', readyError);
+                }
+            } else if (farcasterIntegration.isMiniApp || isFrameContext) {
+                console.warn('⚠️ SDK ready() method not available, but Mini App context detected');
             }
             
             // Hide loading screen

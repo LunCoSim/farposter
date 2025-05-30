@@ -34,35 +34,65 @@ class FarcasterIntegration {
   // Wait for SDK to be available or load it dynamically
   async waitForSDK() {
     try {
-      // Try to load SDK dynamically if not available
-      if (!window.sdk) {
-        console.log('🎯 Loading Farcaster SDK dynamically...');
+      // Check if SDK is already loaded globally
+      if (window.sdk) {
+        console.log('🎯 Farcaster SDK already available');
+        this.sdk = window.sdk;
+        return true;
+      }
+      
+      // Try to load SDK dynamically using the correct import
+      console.log('🎯 Loading Farcaster SDK dynamically...');
+      try {
+        // Use the correct import as per official docs
+        const { sdk } = await import('https://esm.sh/@farcaster/frame-sdk');
+        window.sdk = sdk;
+        this.sdk = sdk;
+        console.log('🎯 SDK imported successfully');
+        return true;
+      } catch (importError) {
+        console.warn('⚠️ Failed to import SDK via ES modules:', importError);
+        
+        // Try alternative CDN loading method
         try {
-          const module = await import('https://esm.sh/@farcaster/frame-sdk');
-          window.sdk = module.sdk;
-          console.log('🎯 SDK imported successfully');
-        } catch (importError) {
-          console.warn('⚠️ Failed to import SDK, trying alternative method:', importError);
-          // Try alternative loading method
-          try {
-            const response = await fetch('https://esm.sh/@farcaster/frame-sdk');
-            if (response.ok) {
-              console.log('🎯 SDK endpoint is reachable but import failed - running in fallback mode');
-            }
-          } catch (fetchError) {
-            console.warn('⚠️ SDK endpoint not reachable:', fetchError);
+          console.log('🎯 Trying alternative loading method...');
+          
+          // Create script tag to load SDK
+          const script = document.createElement('script');
+          script.type = 'module';
+          script.textContent = `
+            import { sdk } from 'https://esm.sh/@farcaster/frame-sdk';
+            window.sdk = sdk;
+            window.dispatchEvent(new CustomEvent('sdk-loaded'));
+          `;
+          
+          document.head.appendChild(script);
+          
+          // Wait for SDK to load
+          await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('SDK loading timeout'));
+            }, 10000);
+            
+            window.addEventListener('sdk-loaded', () => {
+              clearTimeout(timeout);
+              resolve();
+            }, { once: true });
+          });
+          
+          if (window.sdk) {
+            this.sdk = window.sdk;
+            console.log('🎯 SDK loaded via script injection');
+            return true;
           }
+        } catch (scriptError) {
+          console.warn('⚠️ Alternative loading failed:', scriptError);
         }
       }
       
-      if (window.sdk) {
-        console.log('🎯 Farcaster SDK loaded successfully');
-        this.sdk = window.sdk;
-        return true;
-      } else {
-        console.log('ℹ️ Farcaster SDK not available - running in regular web mode');
-        return false;
-      }
+      console.log('ℹ️ Farcaster SDK not available - running in regular web mode');
+      return false;
+      
     } catch (error) {
       console.log('ℹ️ Farcaster SDK unavailable:', error.message);
       return false;
@@ -121,11 +151,36 @@ class FarcasterIntegration {
       const userAgent = navigator.userAgent;
       const isFarcasterClient = userAgent.includes('Farcaster') || userAgent.includes('Warpcast');
       
-      this.isFrameContext = hasFrameParams || (isIframe && isFarcasterClient);
+      // Check if in Mini App embed context (check parent domain)
+      let isMiniAppEmbed = false;
+      try {
+        if (isIframe && window.location !== window.parent.location) {
+          // Check if parent URL contains farcaster.xyz or warpcast
+          const referrer = document.referrer;
+          isMiniAppEmbed = referrer.includes('farcaster.xyz') || referrer.includes('warpcast.com');
+          
+          if (isMiniAppEmbed) {
+            console.log('🎯 Detected Mini App embed context from referrer:', referrer);
+          }
+        }
+      } catch (e) {
+        // Cross-origin restriction, likely in iframe
+        if (isIframe) {
+          isMiniAppEmbed = true;
+          console.log('🎯 Cross-origin iframe detected, assuming Mini App context');
+        }
+      }
+      
+      this.isFrameContext = hasFrameParams || (isIframe && isFarcasterClient) || isMiniAppEmbed;
+      this.isMiniApp = isMiniAppEmbed;
       
       if (this.isFrameContext) {
         console.log('🎯 Farcaster Frame context detected');
         this.extractFrameData(urlParams);
+      }
+      
+      if (this.isMiniApp) {
+        console.log('🎯 Farcaster Mini App context detected');
       }
     } catch (error) {
       console.error('Error detecting frame context:', error);
