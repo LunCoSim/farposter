@@ -189,24 +189,119 @@ class GameEngine {
         if (saved) {
           try {
             const parsedState = JSON.parse(saved);
-            this.stateManager.loadState(parsedState);
-            console.log('✅ Game state loaded from local storage');
+            
+            // Validate saved state structure
+            if (this.validateSaveState(parsedState)) {
+              this.stateManager.loadState(parsedState);
+              console.log('✅ Game state loaded from local storage');
+            } else {
+              console.warn('⚠️ Invalid save state detected, using default state');
+              this.createBackupAndReset('invalid-structure');
+            }
           } catch (error) {
             console.warn('Could not parse saved game state:', error);
+            this.createBackupAndReset('parse-error');
           }
         }
       } else {
         // Authenticated user - try to load from server
         const result = await this.api.loadGameState();
         if (result.success && result.data) {
-          this.stateManager.loadState(result.data);
-          console.log('✅ Game state loaded from server');
+          if (this.validateSaveState(result.data)) {
+            this.stateManager.loadState(result.data);
+            console.log('✅ Game state loaded from server');
+          } else {
+            console.warn('⚠️ Invalid server state detected, using local backup');
+            await this.loadLocalBackup();
+          }
         } else {
-          console.log('📝 No server state found, using defaults');
+          console.log('No saved game state found on server, starting fresh');
         }
       }
     } catch (error) {
-      console.warn('Error loading game state:', error);
+      console.error('Error loading game state:', error);
+      await this.loadLocalBackup();
+    }
+  }
+
+  // Validate save state structure
+  validateSaveState(state) {
+    if (!state || typeof state !== 'object') return false;
+    
+    const requiredFields = [
+      'level', 'xp', 'points', 'ownedCells', 'maxCells',
+      'resources', 'expeditions', 'boosters', 'cells', 'stats'
+    ];
+    
+    for (const field of requiredFields) {
+      if (!(field in state)) {
+        console.warn(`Missing required field: ${field}`);
+        return false;
+      }
+    }
+    
+    // Validate data types
+    if (typeof state.level !== 'number' || state.level < 1) return false;
+    if (typeof state.xp !== 'number' || state.xp < 0) return false;
+    if (typeof state.points !== 'number' || state.points < 0) return false;
+    if (!Array.isArray(state.cells) || state.cells.length !== 18) return false;
+    
+    // Validate cells structure
+    for (const cell of state.cells) {
+      if (!cell || typeof cell !== 'object') return false;
+      if (typeof cell.owned !== 'boolean') return false;
+    }
+    
+    return true;
+  }
+
+  // Create backup and reset
+  createBackupAndReset(reason) {
+    try {
+      const timestamp = new Date().toISOString();
+      const backupKey = `farpost-backup-${reason}-${timestamp}`;
+      const currentData = localStorage.getItem('farpost-game-state');
+      
+      if (currentData) {
+        localStorage.setItem(backupKey, currentData);
+        console.log(`💾 Created backup: ${backupKey}`);
+      }
+      
+      // Clean up old backups (keep only last 5)
+      const backupKeys = Object.keys(localStorage).filter(key => key.startsWith('farpost-backup-'));
+      if (backupKeys.length > 5) {
+        backupKeys.sort().slice(0, -5).forEach(key => {
+          localStorage.removeItem(key);
+        });
+      }
+      
+    } catch (error) {
+      console.error('Failed to create backup:', error);
+    }
+  }
+
+  // Load local backup
+  async loadLocalBackup() {
+    try {
+      const backupKeys = Object.keys(localStorage).filter(key => key.startsWith('farpost-backup-'));
+      
+      if (backupKeys.length > 0) {
+        const latestBackup = backupKeys.sort().pop();
+        const backupData = localStorage.getItem(latestBackup);
+        
+        if (backupData) {
+          const parsedBackup = JSON.parse(backupData);
+          if (this.validateSaveState(parsedBackup)) {
+            this.stateManager.loadState(parsedBackup);
+            console.log('✅ Loaded from local backup:', latestBackup);
+            return;
+          }
+        }
+      }
+      
+      console.log('No valid backup found, starting fresh');
+    } catch (error) {
+      console.error('Error loading backup:', error);
     }
   }
 

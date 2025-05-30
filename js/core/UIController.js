@@ -176,8 +176,10 @@ class UIController {
         boosterIndicator.textContent = boosterConfig?.symbol || '🚀';
         element.appendChild(boosterIndicator);
         
+        // Enhanced tooltip with more booster information
         const timeRemaining = Math.ceil((cellBooster.endTime - Date.now()) / 1000 / 60);
-        element.dataset.tooltip = `${cell.resourceType} - Extracting (${cellBooster.boosterType} active - ${timeRemaining}m remaining)`;
+        const speedMultiplier = cellBooster.speedMultiplier || boosterConfig.multiplier;
+        element.dataset.tooltip = `${cell.resourceType} - Extracting (${cellBooster.boosterType} active - ${speedMultiplier}x speed, ${timeRemaining}m remaining)`;
       } else {
         element.dataset.tooltip = `${cell.resourceType} - Extracting...`;
       }
@@ -616,9 +618,18 @@ class UIController {
       clearInterval(this.progressUpdateInterval);
     }
 
-    this.progressUpdateInterval = setInterval(() => {
-      this.updateExtractionProgress();
-    }, 1000);
+    // Use requestAnimationFrame for smoother updates when page is visible
+    const updateLoop = () => {
+      if (document.hidden) {
+        // Page is hidden, use less frequent updates
+        setTimeout(updateLoop, 5000);
+      } else {
+        this.updateExtractionProgress();
+        setTimeout(updateLoop, 1000);
+      }
+    };
+    
+    updateLoop();
   }
 
   // Update extraction progress for all active cells
@@ -637,6 +648,12 @@ class UIController {
       if (booster && booster.endTime <= currentTime) {
         delete newBoostedCells[cellIndex];
         boostersExpired = true;
+        
+        // Show notification when booster expires
+        const cell = state.cells[parseInt(cellIndex)];
+        if (cell && cell.extractionStartTime && !cell.isReady) {
+          this.showNotification(`${booster.boosterType} expired on ${cell.resourceType} expedition`, 'info', 3000);
+        }
       }
     });
 

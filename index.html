@@ -1133,30 +1133,28 @@
         }
 
         @media (max-width: 768px) {
-            .header {
-                padding: 10px 15px;
-            }
-            
-            .player-info {
-                gap: 15px;
-            }
-            
-            .stat {
-                min-width: 50px;
-            }
-            
-            .stat-value {
-                font-size: 14px;
-            }
-            
-            .game-title h1 {
-                font-size: 18px;
-            }
-            
             .main-container {
                 grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
                 gap: 15px;
                 padding: 15px;
+            }
+            
+            .map-container {
+                order: 1;
+                padding: 15px;
+            }
+            
+            .deployment-center {
+                order: 2;
+                padding: 15px;
+            }
+            
+            .purchase-panel {
+                order: 3;
+                min-height: auto;
+                max-height: 400px;
+                overflow-y: auto;
             }
             
             .hex-grid {
@@ -1169,17 +1167,115 @@
                 height: 44px;
                 font-size: 9px;
             }
+            
+            .header {
+                padding: 10px 15px;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            
+            .player-info {
+                gap: 15px;
+                font-size: 14px;
+            }
+            
+            .stat {
+                min-width: 50px;
+            }
+            
+            .game-title h1 {
+                font-size: 18px;
+            }
+            
+            .panel-title {
+                font-size: 16px;
+            }
+            
+            .resource-item, .booster-item, .inventory-item {
+                padding: 10px;
+                font-size: 14px;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            
+            .tab-btn {
+                flex: 1;
+                min-width: 80px;
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+            
+            .tutorial-content {
+                max-width: 90%;
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .notification {
+                max-width: 90% !important;
+                min-width: 200px !important;
+                font-size: 14px !important;
+                padding: 12px 16px !important;
+            }
         }
-
+        
         @media (max-width: 480px) {
             .hex-grid {
                 grid-template-columns: repeat(3, 1fr);
+                gap: 4px;
             }
             
             .hex-cell {
                 width: 45px;
-                height: 40px;
+                height: 39px;
                 font-size: 8px;
+            }
+            
+            .header {
+                padding: 8px 10px;
+            }
+            
+            .player-info {
+                gap: 10px;
+                font-size: 12px;
+            }
+            
+            .game-title h1 {
+                font-size: 16px;
+            }
+            
+            .main-container {
+                padding: 10px;
+                gap: 10px;
+            }
+            
+            .map-container, .deployment-center {
+                padding: 10px;
+            }
+        }
+
+        /* Touch-friendly improvements */
+        @media (hover: none) and (pointer: coarse) {
+            .hex-cell {
+                transform: none !important;
+                transition: background-color 0.2s, border-color 0.2s;
+            }
+            
+            .hex-cell:active {
+                background-color: #555 !important;
+                transform: scale(0.95);
+            }
+            
+            .resource-item, .booster-item, .inventory-item {
+                min-height: 44px;
+                cursor: pointer;
+            }
+            
+            .tab-btn {
+                min-height: 44px;
             }
         }
 

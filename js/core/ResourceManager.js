@@ -247,23 +247,41 @@ class ResourceManager {
       throw new Error(`${boosterType} cannot boost ${cell.resourceType} (tier too high)`);
     }
 
+    // Calculate remaining time and apply speed boost
+    const currentTime = Date.now();
+    const remaining = Math.max(0, cell.extractionEndTime - currentTime);
+    
+    if (remaining <= 0) {
+      throw new Error('Expedition has already completed');
+    }
+
+    const newRemaining = Math.max(1000, remaining / boosterConfig.multiplier);
+    const newEndTime = currentTime + newRemaining;
+
     // Apply booster
     const newBoosters = { ...state.boosters };
     newBoosters[boosterType]--;
 
     const newBoostedCells = { ...state.boostedCells };
+    
+    // Booster duration should be independent of extraction time
+    // Set booster duration to the configured duration OR until extraction completes, whichever is shorter
+    const boosterDuration = boosterConfig.duration * 1000; // Convert to milliseconds
+    const boosterEndTime = Math.min(currentTime + boosterDuration, newEndTime);
+    
     newBoostedCells[cellIndex] = {
       boosterType,
-      endTime: Date.now() + (boosterConfig.duration * 1000)
+      startTime: currentTime,
+      endTime: boosterEndTime,
+      originalEndTime: cell.extractionEndTime,
+      speedMultiplier: boosterConfig.multiplier
     };
 
     // Apply speed boost to ongoing expedition
     const newCells = [...state.cells];
-    const remaining = cell.extractionEndTime - Date.now();
-    const newRemaining = Math.max(1000, remaining / boosterConfig.multiplier);
     newCells[cellIndex] = {
       ...cell,
-      extractionEndTime: Date.now() + newRemaining
+      extractionEndTime: newEndTime
     };
 
     const newStats = { ...state.stats };
@@ -278,7 +296,7 @@ class ResourceManager {
     });
 
     // Update extraction timer
-    this.setExtractionTimer(cellIndex, Date.now() + newRemaining);
+    this.setExtractionTimer(cellIndex, newEndTime);
 
     // Check for level up
     this.stateManager.checkLevelUp();
@@ -287,14 +305,16 @@ class ResourceManager {
       cellIndex,
       boosterType,
       multiplier: boosterConfig.multiplier,
-      xpGained: boosterConfig.useXP
+      xpGained: boosterConfig.useXP,
+      timeReduced: remaining - newRemaining
     });
 
     return {
       cellIndex,
       boosterType,
       speedMultiplier: boosterConfig.multiplier,
-      xpGained: boosterConfig.useXP
+      xpGained: boosterConfig.useXP,
+      timeReduced: remaining - newRemaining
     };
   }
 

@@ -122,6 +122,53 @@ class GameStateManager {
   // Update state with validation
   updateState(updates) {
     const oldState = this.getState();
+    
+    // Validate critical state updates
+    if (updates.points !== undefined && updates.points < 0) {
+      console.warn('Attempted to set negative points, clamping to 0');
+      updates.points = 0;
+    }
+    
+    if (updates.xp !== undefined && updates.xp < 0) {
+      console.warn('Attempted to set negative XP, clamping to 0');
+      updates.xp = 0;
+    }
+    
+    if (updates.level !== undefined && updates.level < 1) {
+      console.warn('Attempted to set level below 1, clamping to 1');
+      updates.level = 1;
+    }
+    
+    // Validate resource inventory
+    if (updates.resources) {
+      Object.keys(updates.resources).forEach(resource => {
+        if (updates.resources[resource] < 0) {
+          console.warn(`Attempted to set negative ${resource}, clamping to 0`);
+          updates.resources[resource] = 0;
+        }
+      });
+    }
+    
+    // Validate expedition inventory
+    if (updates.expeditions) {
+      Object.keys(updates.expeditions).forEach(expedition => {
+        if (updates.expeditions[expedition] < 0) {
+          console.warn(`Attempted to set negative ${expedition} expeditions, clamping to 0`);
+          updates.expeditions[expedition] = 0;
+        }
+      });
+    }
+    
+    // Validate booster inventory
+    if (updates.boosters) {
+      Object.keys(updates.boosters).forEach(booster => {
+        if (updates.boosters[booster] < 0) {
+          console.warn(`Attempted to set negative ${booster} boosters, clamping to 0`);
+          updates.boosters[booster] = 0;
+        }
+      });
+    }
+    
     this.state = { ...this.state, ...updates };
     this.emit('stateChange', { oldState, newState: this.getState() });
   }
