@@ -63,12 +63,14 @@ Strategic Timing:
 | Elite Booster | 500 | 1 hour | 4x | 10 | Level 10 resources |
 | Master Booster | 1000 | 1 hour | 5x | 15 | Level 15 resources |
 | Ultimate Booster | 2000 | 1 hour | 10x | 20 | Level 20 resources |
+| Instant Extract | Cannot be purchased | Single use | Instant | 1 | All resources |
 
 Booster Properties:
 - Each booster can only be used on resources of its tier or lower
 - Boosters can be applied to multiple cells simultaneously
 - Booster effects stack multiplicatively with cell upgrades
 - Boosters cannot be used on already started expeditions
+- Instant Extract is a special booster that cannot be purchased and is only received as rewards (particularly during game start)
 
 Example Usage:
 - Basic Booster (2x) on Lunar Regolith: 5 min → 2.5 min
@@ -76,12 +78,14 @@ Example Usage:
 - Elite Booster (4x) on Rare Earth Elements: 90 min → 22.5 min
 - Master Booster (5x) on Platinum Group Metals: 120 min → 24 min
 - Ultimate Booster (10x) on Helium-3: 180 min → 18 min
+- Instant Extract: Any extraction time → Complete immediately
 
 ### 2.3 Cell System
 | Level | Cells Available | Cell Purchase Cost | XP for Purchase |
 |-------|-----------------|-------------------|-----------------|
 | 1 | 3 | 500 | 100 |
-| 5 | 5 | 500 | 100 |
+| 2 | 4 | 500 | 100 |
+| 3 | 5 | 500 | 100 |
 | 10 | 8 | 500 | 100 |
 | 15 | 12 | 500 | 100 |
 | 20 | 16 | 500 | 100 |
@@ -89,6 +93,28 @@ Example Usage:
 | 30 | 32 | 500 | 100 |
 | 35 | 48 | 500 | 100 |
 | 40 | 64 | 500 | 100 |
+
+### 2.4 Level System
+| Level | XP Required (Cumulative) | Features Unlocked |
+|-------|--------------------------|-------------------|
+| 1 | 0 | Starting level, Basic resources |
+| 2 | 300 | Additional cell slot |
+| 3 | 1200 | Additional cell slot |
+| 4 | 2200 | - |
+| 5 | 3500 | Medium-tier resources (Magnesium, Silicon, Titanium), Advanced Booster |
+| 6 | 5200 | - |
+| 7 | 7300 | - |
+| 8 | 9800 | - |
+| 9 | 12800 | - |
+| 10 | 16400 | Long-cycle resources (Rare Earth Elements), Elite Booster, Additional cells |
+| 11 | 20600 | - |
+| 12+ | TBD | Additional levels and features |
+
+Level Progression:
+- XP is earned from resource extraction and collection
+- Each level unlocks new features, resources, or capabilities
+- Higher levels provide access to more valuable resources and better equipment
+- Cell capacity increases at specific level milestones
 
 ## 3. Player Actions
 
