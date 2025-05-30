@@ -1,4 +1,3 @@
-// Main Game Logic for Farpost
 class FarpostGame {
   constructor() {
     this.gameState = {
@@ -34,12 +33,12 @@ class FarpostGame {
         'Helium-3': 0
       },
       boosters: {
-        'Basic Booster': { cost: 100, effect: '2x speed for 1 extraction', level: 3, speedMultiplier: 2, duration: 1, symbol: '⚡' },
-        'Advanced Booster': { cost: 200, effect: '3x speed for 1 extraction', level: 5, speedMultiplier: 3, duration: 1, symbol: '⚡⚡' },
-        'Elite Booster': { cost: 400, effect: '5x speed for 1 extraction', level: 8, speedMultiplier: 5, duration: 1, symbol: '⚡⚡⚡' },
-        'Master Booster': { cost: 800, effect: '2x speed for 3 extractions', level: 12, speedMultiplier: 2, duration: 3, symbol: '🚀' },
-        'Ultimate Booster': { cost: 1500, effect: '3x speed for 3 extractions', level: 16, speedMultiplier: 3, duration: 3, symbol: '🚀🚀' },
-        'Instant Extract': { cost: 1000, effect: 'Complete extraction instantly', level: 10, speedMultiplier: 999, duration: 1, symbol: '⭐' }
+        'Basic Booster': 0,
+        'Advanced Booster': 0,
+        'Elite Booster': 0,
+        'Master Booster': 0,
+        'Ultimate Booster': 0,
+        'Instant Extract': 0
       },
       cells: Array(18).fill(null).map((_, index) => ({
         id: index,
@@ -159,33 +158,10 @@ class FarpostGame {
 
   // Get game configuration from the CONFIG object
   getGameConfig() {
-    return window.CONFIG?.game || {
-      resources: {
-        'Lunar Regolith': { time: 0.5, cost: 20, value: 50, xp: 15, level: 1, symbol: 'LR' },
-        'Iron Ore': { time: 1, cost: 30, value: 100, xp: 25, level: 1, symbol: 'Fe' },
-        'Aluminum': { time: 2, cost: 35, value: 150, xp: 30, level: 1, symbol: 'Al' },
-        'Water Ice': { time: 4, cost: 40, value: 200, xp: 35, level: 1, symbol: 'H2O' },
-        'Magnesium': { time: 6, cost: 45, value: 180, xp: 40, level: 5, symbol: 'Mg' },
-        'Silicon': { time: 8, cost: 50, value: 250, xp: 45, level: 5, symbol: 'Si' },
-        'Titanium': { time: 12, cost: 80, value: 500, xp: 60, level: 5, symbol: 'Ti' },
-        'Rare Earth Elements': { time: 20, cost: 150, value: 1000, xp: 100, level: 10, symbol: 'REE' },
-        'Platinum Group Metals': { time: 30, cost: 300, value: 2000, xp: 200, level: 15, symbol: 'PGM' },
-        'Helium-3': { time: 60, cost: 500, value: 5000, xp: 500, level: 20, symbol: 'He3' }
-      },
-      boosters: {
-        'Basic Booster': { cost: 100, effect: '2x speed for 1 extraction', level: 3, speedMultiplier: 2, duration: 1, symbol: '⚡' },
-        'Advanced Booster': { cost: 200, effect: '3x speed for 1 extraction', level: 5, speedMultiplier: 3, duration: 1, symbol: '⚡⚡' },
-        'Elite Booster': { cost: 400, effect: '5x speed for 1 extraction', level: 8, speedMultiplier: 5, duration: 1, symbol: '⚡⚡⚡' },
-        'Master Booster': { cost: 800, effect: '2x speed for 3 extractions', level: 12, speedMultiplier: 2, duration: 3, symbol: '🚀' },
-        'Ultimate Booster': { cost: 1500, effect: '3x speed for 3 extractions', level: 16, speedMultiplier: 3, duration: 3, symbol: '🚀🚀' },
-        'Instant Extract': { cost: 1000, effect: 'Complete extraction instantly', level: 10, speedMultiplier: 999, duration: 1, symbol: '⭐' }
-      },
-      levelThresholds: {
-        2: 1000, 3: 2500, 4: 5000, 5: 8000, 6: 12000, 7: 17000, 8: 23000, 9: 30000, 10: 38000,
-        11: 47000, 12: 57000, 13: 68000, 14: 80000, 15: 93000, 16: 107000, 17: 122000, 18: 138000, 19: 155000, 20: 173000
-      },
-      cellUnlocks: { 1: 3, 3: 6, 5: 9, 8: 12, 12: 15, 20: 18 }
-    };
+    if (!window.CONFIG?.game) {
+      throw new Error('Game configuration not loaded! Please ensure config.js is loaded before game.js');
+    }
+    return window.CONFIG.game;
   }
 
   // Load game state from local storage
@@ -312,18 +288,19 @@ class FarpostGame {
     element.innerHTML = '';
     
     if (!cell.owned) {
-      const canBuy = this.gameState.points >= 500 && this.gameState.ownedCells < this.gameState.maxCells;
+      const config = this.getGameConfig();
+      const canBuy = this.gameState.points >= config.cellPurchaseCost && this.gameState.ownedCells < this.gameState.maxCells;
       if (canBuy) {
         element.classList.add('available');
         element.textContent = '+';
-        element.dataset.tooltip = 'Click to buy for 500 pts';
+        element.dataset.tooltip = `Click to buy for ${config.cellPurchaseCost} pts`;
       } else {
         element.classList.add('unavailable');
         element.textContent = '🔒';
         if (this.gameState.ownedCells >= this.gameState.maxCells) {
           element.dataset.tooltip = 'Max cells reached for your level';
         } else {
-          element.dataset.tooltip = 'Not enough points (need 500)';
+          element.dataset.tooltip = `Not enough points (need ${config.cellPurchaseCost})`;
         }
       }
     } else if (cell.isReady) {
@@ -411,7 +388,9 @@ class FarpostGame {
 
   // Buy cell
   buyCell(index) {
-    if (this.gameState.points < 500) {
+    const config = this.getGameConfig();
+    
+    if (this.gameState.points < config.cellPurchaseCost) {
       this.showNotification('Not enough points!', 'error');
       return;
     }
@@ -421,14 +400,14 @@ class FarpostGame {
       return;
     }
     
-    this.gameState.points -= 500;
+    this.gameState.points -= config.cellPurchaseCost;
     this.gameState.ownedCells++;
     this.gameState.cells[index].owned = true;
-    this.gameState.xp += 150;
+    this.gameState.xp += config.cellPurchaseXP;
     
     // Track for achievements
     this.achievements?.trackAction('cell_purchased');
-    this.achievements?.trackAction('points_spent', { amount: 500 });
+    this.achievements?.trackAction('points_spent', { amount: config.cellPurchaseCost });
     
     this.showNotification('Cell purchased successfully!', 'success');
     this.checkLevelUp();
@@ -809,10 +788,10 @@ class FarpostGame {
       
       // Reduce remaining time based on speed multiplier
       const remaining = cell.extractionEndTime - Date.now();
-      const newRemaining = Math.max(1000, remaining / boosterConfig.speedMultiplier);
+      const newRemaining = Math.max(1000, remaining / boosterConfig.multiplier);
       cell.extractionEndTime = Date.now() + newRemaining;
       
-      this.showNotification(`${boosterType} activated! ${boosterConfig.speedMultiplier}x speed for ${boosterConfig.duration} extraction(s)!`, 'success');
+      this.showNotification(`${boosterType} activated! ${boosterConfig.multiplier}x speed for ${boosterConfig.duration} extraction(s)!`, 'success');
     }
     
     // Track for achievements
@@ -862,6 +841,9 @@ class FarpostGame {
       tabContent.innerHTML = '<div class="panel-title">Purchase Boosters</div>';
       
       Object.entries(this.getGameConfig().boosters).forEach(([boosterType, config]) => {
+        // Skip non-purchasable boosters in the purchase interface
+        if (config.purchasable === false) return;
+        
         const canAfford = this.gameState.points >= config.cost;
         const levelOk = this.gameState.level >= config.level;
         const isDisabled = !canAfford || !levelOk;
@@ -888,6 +870,26 @@ class FarpostGame {
         
         tabContent.appendChild(item);
       });
+      
+      // Show special note about Instant Extract
+      const instantExtractAmount = this.gameState.boosters['Instant Extract'] || 0;
+      if (instantExtractAmount > 0) {
+        const specialNote = document.createElement('div');
+        specialNote.className = 'booster-item';
+        specialNote.style.background = 'rgba(255, 193, 7, 0.2)';
+        specialNote.style.borderLeft = '4px solid #FFC107';
+        specialNote.innerHTML = `
+          <div class="booster-info">
+            <div class="booster-name">⭐ Instant Extract (Special Reward)</div>
+            <div class="booster-effect">Complete extraction instantly</div>
+            <div class="booster-cost">Cannot be purchased - only received as rewards</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="resource-amount">Owned: ${instantExtractAmount}</div>
+          </div>
+        `;
+        tabContent.appendChild(specialNote);
+      }
       
     } else if (this.gameState.activeTab === 'sell') {
       tabContent.innerHTML = '<div class="panel-title">Collected Resources</div>';
@@ -971,6 +973,11 @@ class FarpostGame {
   // Purchase booster
   purchaseBooster(boosterType) {
     const boosterConfig = this.getGameConfig().boosters[boosterType];
+    
+    if (boosterConfig.purchasable === false) {
+      this.showNotification(`${boosterType} cannot be purchased - only received as rewards!`, 'error');
+      return;
+    }
     
     if (boosterConfig.level > this.gameState.level) {
       this.showNotification(`Level ${boosterConfig.level} required for ${boosterType}!`, 'error');
