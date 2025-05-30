@@ -64,9 +64,7 @@ class ResourceManager {
     this.stateManager.updateState({
       cells: newCells,
       expeditions: newExpeditions,
-      stats: newStats,
-      selectedExpedition: null,
-      mode: 'select'
+      stats: newStats
     });
 
     // Set up extraction timer
@@ -276,9 +274,7 @@ class ResourceManager {
       boostedCells: newBoostedCells,
       cells: newCells,
       stats: newStats,
-      xp: state.xp + boosterConfig.useXP,
-      selectedBooster: null,
-      mode: 'select'
+      xp: state.xp + boosterConfig.useXP
     });
 
     // Update extraction timer
@@ -338,8 +334,6 @@ class ResourceManager {
       cells: newCells,
       stats: newStats,
       xp: state.xp + boosterConfig.useXP,
-      selectedBooster: null,
-      mode: 'select',
       boostedCells: newBoostedCells
     });
 

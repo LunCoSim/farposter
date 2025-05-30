@@ -216,6 +216,72 @@
             cursor: not-allowed;
         }
 
+        /* Enhanced booster highlighting for active boosters */
+        .hex-cell.booster-active {
+            position: relative;
+            border-width: 3px;
+            animation: boosterActivePulse 1.5s ease-in-out infinite;
+        }
+
+        .hex-cell.booster-active .booster-indicator {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #4CAF50, #8BC34A);
+            border: 2px solid white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            z-index: 10;
+            animation: boosterIndicatorSpin 3s linear infinite;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        /* Specific booster type styling */
+        .hex-cell.booster-speed-boost {
+            border-color: #ff9800;
+            background: rgba(255, 152, 0, 0.2);
+            box-shadow: 0 0 15px rgba(255, 152, 0, 0.4);
+        }
+
+        .hex-cell.booster-speed-boost .booster-indicator {
+            background: linear-gradient(45deg, #ff9800, #ffb74d);
+        }
+
+        .hex-cell.booster-turbo-charge {
+            border-color: #e91e63;
+            background: rgba(233, 30, 99, 0.2);
+            box-shadow: 0 0 15px rgba(233, 30, 99, 0.4);
+        }
+
+        .hex-cell.booster-turbo-charge .booster-indicator {
+            background: linear-gradient(45deg, #e91e63, #f06292);
+        }
+
+        .hex-cell.booster-mega-boost {
+            border-color: #9c27b0;
+            background: rgba(156, 39, 176, 0.2);
+            box-shadow: 0 0 15px rgba(156, 39, 176, 0.4);
+        }
+
+        .hex-cell.booster-mega-boost .booster-indicator {
+            background: linear-gradient(45deg, #9c27b0, #ba68c8);
+        }
+
+        .hex-cell.booster-instant-extract {
+            border-color: #f44336;
+            background: rgba(244, 67, 54, 0.2);
+            box-shadow: 0 0 15px rgba(244, 67, 54, 0.4);
+        }
+
+        .hex-cell.booster-instant-extract .booster-indicator {
+            background: linear-gradient(45deg, #f44336, #ef5350);
+        }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
@@ -1281,6 +1347,22 @@
             50% { 
                 box-shadow: 0 0 20px rgba(33, 150, 243, 0.8);
             }
+        }
+
+        @keyframes boosterActivePulse {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 10px currentColor;
+            }
+            50% { 
+                transform: scale(1.05);
+                box-shadow: 0 0 20px currentColor;
+            }
+        }
+
+        @keyframes boosterIndicatorSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>

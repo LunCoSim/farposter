@@ -161,6 +161,27 @@ class UIController {
       const config = this.stateManager.config.resources[cell.resourceType];
       element.textContent = config?.symbol || '⚡';
       
+      // Check if cell has a booster applied
+      const cellBooster = state.boostedCells[index];
+      if (cellBooster && cellBooster.endTime > Date.now()) {
+        element.classList.add('booster-active');
+        const boosterConfig = this.stateManager.config.boosters[cellBooster.boosterType];
+        
+        // Add booster type class for specific styling
+        element.classList.add(`booster-${cellBooster.boosterType.toLowerCase().replace(/\s+/g, '-')}`);
+        
+        // Create booster indicator overlay
+        const boosterIndicator = document.createElement('div');
+        boosterIndicator.className = 'booster-indicator';
+        boosterIndicator.textContent = boosterConfig?.symbol || '🚀';
+        element.appendChild(boosterIndicator);
+        
+        const timeRemaining = Math.ceil((cellBooster.endTime - Date.now()) / 1000 / 60);
+        element.dataset.tooltip = `${cell.resourceType} - Extracting (${cellBooster.boosterType} active - ${timeRemaining}m remaining)`;
+      } else {
+        element.dataset.tooltip = `${cell.resourceType} - Extracting...`;
+      }
+      
       const timer = document.createElement('div');
       timer.className = 'timer';
       element.appendChild(timer);
@@ -170,11 +191,10 @@ class UIController {
       element.appendChild(progressOverlay);
       
       this.updateCellTimer(element, cell);
-      element.dataset.tooltip = `${cell.resourceType} - Extracting...`;
     } else {
       element.classList.add('owned');
       
-      // Check if cell has a booster applied
+      // Check if cell has a booster applied (for non-extracting cells, shouldn't happen but handle gracefully)
       const cellBooster = state.boostedCells[index];
       if (cellBooster && cellBooster.endTime > Date.now()) {
         element.classList.add('booster-target');
@@ -229,17 +249,59 @@ class UIController {
       
       if (state.mode === 'deploy' && state.selectedExpedition) {
         this.resourceManager.deployExpedition(index, state.selectedExpedition);
+        
+        // Check if we still have expeditions available for continuous deployment
+        const updatedState = this.stateManager.getState();
+        if (updatedState.expeditions[state.selectedExpedition] <= 0) {
+          // No more expeditions, clear selection
+          this.stateManager.updateState({
+            selectedExpedition: null,
+            mode: 'select'
+          });
+          this.showNotification(`No more ${state.selectedExpedition} expeditions! Selection cleared.`, 'info');
+        } else {
+          // Still have expeditions, maintain selection for continuous deployment
+          this.showNotification(`${state.selectedExpedition} deployed! (${updatedState.expeditions[state.selectedExpedition]} remaining)`, 'success');
+        }
         return;
       }
       
       if (state.mode === 'booster' && state.selectedBooster && cell.extractionStartTime) {
         this.resourceManager.applyBooster(index, state.selectedBooster);
+        
+        // Check if we still have boosters available for continuous application
+        const updatedState = this.stateManager.getState();
+        if (updatedState.boosters[state.selectedBooster] <= 0) {
+          // No more boosters, clear selection
+          this.stateManager.updateState({
+            selectedBooster: null,
+            mode: 'select'
+          });
+          this.showNotification(`No more ${state.selectedBooster}! Selection cleared.`, 'info');
+        } else {
+          // Still have boosters, maintain selection for continuous application
+          this.showNotification(`${state.selectedBooster} applied! (${updatedState.boosters[state.selectedBooster]} remaining)`, 'success');
+        }
         return;
       }
       
       if (cell.extractionStartTime) {
         if (state.selectedBooster) {
           this.resourceManager.applyBooster(index, state.selectedBooster);
+          
+          // Check if we still have boosters available for continuous application
+          const updatedState = this.stateManager.getState();
+          if (updatedState.boosters[state.selectedBooster] <= 0) {
+            // No more boosters, clear selection
+            this.stateManager.updateState({
+              selectedBooster: null,
+              mode: 'select'
+            });
+            this.showNotification(`No more ${state.selectedBooster}! Selection cleared.`, 'info');
+          } else {
+            // Still have boosters, maintain selection for continuous application
+            this.showNotification(`${state.selectedBooster} applied! (${updatedState.boosters[state.selectedBooster]} remaining)`, 'success');
+          }
         } else {
           this.showNotification('This cell is already extracting! Use boosters to speed it up.', 'warning');
         }
@@ -512,7 +574,8 @@ class UIController {
         selectedBooster: null,
         mode: 'deploy'
       });
-      this.showNotification(`Selected ${resourceType} expedition. Click cells to deploy!`, 'success');
+      const count = state.expeditions[resourceType];
+      this.showNotification(`Selected ${resourceType} expedition (${count} available). Click cells to deploy continuously!`, 'success');
     }
   }
 
@@ -538,10 +601,11 @@ class UIController {
         mode: 'booster'
       });
       
+      const count = state.boosters[boosterType];
       if (boosterType === 'Instant Extract') {
-        this.showNotification(`Selected ${boosterType}. Click extracting cells to boost them instantly!`, 'success');
+        this.showNotification(`Selected ${boosterType} (${count} available). Click extracting cells to boost them instantly!`, 'success');
       } else {
-        this.showNotification(`Selected ${boosterType}. Click ongoing expeditions to speed them up!`, 'success');
+        this.showNotification(`Selected ${boosterType} (${count} available). Click extracting cells to speed them up continuously!`, 'success');
       }
     }
   }
