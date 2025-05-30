@@ -1,120 +1,14 @@
 // API client for Farpost Game
+// This client only communicates with Netlify functions, not directly with Supabase
 class FarpostAPI {
   constructor() {
     this.baseURL = window.location.origin;
-    this.supabase = null;
-    this.user = null;
-    this.session = null;
+    this.isAuthenticated = false;
+    this.currentUser = null;
+    this.gameState = null;
   }
 
-  // Initialize Supabase client
-  async init() {
-    try {
-      // Get config from environment or config file
-      const supabaseUrl = window.CONFIG?.supabase?.url || 'your-supabase-url-here';
-      const supabaseKey = window.CONFIG?.supabase?.anonKey || 'your-supabase-anon-key-here';
-      
-      // Skip Supabase initialization if not properly configured
-      if (supabaseUrl === 'your-supabase-url-here' || 
-          supabaseUrl.includes('your-supabase-url') ||
-          supabaseUrl === 'https://your-supabase-url.supabase.co' ||
-          !supabaseUrl.startsWith('https://')) {
-        console.log('Supabase not configured, running in offline mode');
-        return true;
-      }
-      
-      // Dynamically import Supabase client only if we have valid config
-      const { createClient } = await import('https://cdn.skypack.dev/@supabase/supabase-js@2');
-      this.supabase = createClient(supabaseUrl, supabaseKey);
-      
-      // Set up auth state listener
-      this.supabase.auth.onAuthStateChange((event, session) => {
-        this.session = session;
-        this.user = session?.user || null;
-        
-        if (event === 'SIGNED_IN') {
-          this.onAuthStateChange('signed_in', session);
-        } else if (event === 'SIGNED_OUT') {
-          this.onAuthStateChange('signed_out', null);
-        }
-      });
-
-      // Check if user is already logged in
-      const { data: { session } } = await this.supabase.auth.getSession();
-      if (session) {
-        this.session = session;
-        this.user = session.user;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Failed to initialize Supabase:', error);
-      return false;
-    }
-  }
-
-  // Auth state change callback (override in game)
-  onAuthStateChange(event, session) {
-    // Override this method in the game
-  }
-
-  // Authentication methods
-  async signIn(email, password) {
-    try {
-      const { data, error } = await this.supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  async signUp(email, password, username) {
-    try {
-      const { data, error } = await this.supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username: username
-          }
-        }
-      });
-
-      if (error) throw error;
-      return { success: true, data };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  async signOut() {
-    try {
-      const { error } = await this.supabase.auth.signOut();
-      if (error) throw error;
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  // Get authentication headers
-  getAuthHeaders() {
-    if (!this.session?.access_token) {
-      throw new Error('No authentication token available');
-    }
-    
-    return {
-      'Authorization': `Bearer ${this.session.access_token}`,
-      'Content-Type': 'application/json'
-    };
-  }
-
-  // Generic API request method
+  // Generic API request method for Netlify functions
   async apiRequest(endpoint, options = {}) {
     try {
       const url = `${this.baseURL}${endpoint}`;
@@ -122,11 +16,6 @@ class FarpostAPI {
         'Content-Type': 'application/json',
         ...options.headers
       };
-
-      // Add auth headers if user is logged in
-      if (this.session?.access_token && !options.skipAuth) {
-        headers.Authorization = `Bearer ${this.session.access_token}`;
-      }
 
       const config = {
         method: options.method || 'GET',
@@ -139,26 +28,105 @@ class FarpostAPI {
       }
 
       const response = await fetch(url, config);
-      const data = await response.json();
-
+      
       if (!response.ok) {
-        throw new Error(data.error || `HTTP ${response.status}`);
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If response isn't JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
-      return data;
+      // Handle empty responses
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await response.json();
+      } else {
+        return { success: true };
+      }
     } catch (error) {
       console.error('API request failed:', error);
       throw error;
     }
   }
 
+  // Authentication methods - these will be handled by backend functions
+  async signIn(email, password) {
+    try {
+      const result = await this.apiRequest('/.netlify/functions/auth', {
+        method: 'POST',
+        body: { action: 'signin', email, password }
+      });
+      
+      if (result.success) {
+        this.isAuthenticated = true;
+        this.currentUser = result.user;
+      }
+      
+      return result;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async signUp(email, password, username) {
+    try {
+      const result = await this.apiRequest('/.netlify/functions/auth', {
+        method: 'POST',
+        body: { action: 'signup', email, password, username }
+      });
+      
+      if (result.success) {
+        this.isAuthenticated = true;
+        this.currentUser = result.user;
+      }
+      
+      return result;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async signOut() {
+    try {
+      const result = await this.apiRequest('/.netlify/functions/auth', {
+        method: 'POST',
+        body: { action: 'signout' }
+      });
+      
+      if (result.success) {
+        this.isAuthenticated = false;
+        this.currentUser = null;
+        this.gameState = null;
+      }
+      
+      return result;
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
   // Game state methods
   async loadGameState() {
-    return await this.apiRequest('/api/game-state');
+    try {
+      const result = await this.apiRequest('/.netlify/functions/game-state');
+      if (result.success) {
+        this.gameState = result.data;
+        this.isAuthenticated = true;
+      }
+      return result;
+    } catch (error) {
+      console.error('Failed to load game state:', error);
+      throw error;
+    }
   }
 
   async saveGameState(updates) {
-    return await this.apiRequest('/api/game-state', {
+    return await this.apiRequest('/.netlify/functions/game-state', {
       method: 'PUT',
       body: updates
     });
@@ -166,7 +134,7 @@ class FarpostAPI {
 
   // Game action methods
   async gameAction(action, payload = {}) {
-    return await this.apiRequest('/api/game-actions', {
+    return await this.apiRequest('/.netlify/functions/game-actions', {
       method: 'POST',
       body: { action, payload }
     });
@@ -202,16 +170,29 @@ class FarpostAPI {
   }
 
   // Utility methods
-  isAuthenticated() {
-    return !!this.user;
+  isAuth() {
+    return this.isAuthenticated;
   }
 
   getCurrentUser() {
-    return this.user;
+    return this.currentUser;
   }
 
-  getSession() {
-    return this.session;
+  getGameState() {
+    return this.gameState;
+  }
+
+  // Initialize the API (check if user is already logged in)
+  async init() {
+    try {
+      // Try to load game state to check if user is authenticated
+      await this.loadGameState();
+      return true;
+    } catch (error) {
+      // If loading fails, user is not authenticated
+      this.isAuthenticated = false;
+      return false;
+    }
   }
 }
 

@@ -1,22 +1,7 @@
 // Configuration for Farpost Game
-// Defensive check to prevent process.env errors in browser
-if (typeof process === 'undefined') {
-  window.process = { env: {} };
-}
+// Frontend configuration - no sensitive credentials here!
 
 const config = {
-  // Supabase configuration
-  supabase: {
-    url: 'https://your-supabase-url.supabase.co',
-    anonKey: 'your-supabase-anon-key-here'
-  },
-  
-  // API endpoints
-  api: {
-    gameState: '/api/game-state',
-    gameActions: '/api/game-actions'
-  },
-  
   // Game configuration (matches server-side)
   game: {
     resources: {
