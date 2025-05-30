@@ -341,3 +341,269 @@ Level Progression:
    - Resource rushes
    - Market events
    - Special expeditions 
+
+## 8. Tutorial System
+
+### 8.1 Tutorial Overview
+The tutorial system guides new players through the core game mechanics in a structured, step-by-step approach. It provides hands-on learning with visual highlights and progress tracking.
+
+### 8.2 Tutorial Flow
+| Step | Title | Action Required | Completion Trigger |
+|------|-------|----------------|-------------------|
+| 1 | Welcome to Farpost! 🌙 | None (informational) | Click "Got it!" |
+| 2 | Buy Your First Expedition ⛏️ | Purchase "Lunar Regolith" expedition | Purchase any expedition |
+| 3 | Deploy Your Expedition 🚀 | Select expedition and deploy to owned cell | Deploy expedition to cell |
+| 4 | Wait for Extraction ⏰ | Wait for extraction to complete | Extraction completion (sped up in tutorial) |
+| 5 | Collect Your Resources 💎 | Click ready cell to collect resource | Collect resource from cell |
+| 6 | Sell Resources for Points 💰 | Go to Sell tab and sell resources | Sell resources |
+| 7 | Tutorial Complete! 🎉 | None (completion message) | Tutorial finished |
+
+### 8.3 Tutorial Mechanics
+
+#### Environment Setup:
+- **Starting Resources**: Ensures player has 1,000+ points
+- **Speed Acceleration**: 60x faster extraction times during tutorial
+- **UI Blocking**: Disables non-relevant UI elements with `.tutorial-blocked` class
+- **Visual Highlights**: Highlights relevant elements with `.tutorial-highlight` class
+
+#### Tutorial State Management:
+```javascript
+tutorial: {
+  isActive: false,
+  completed: false,
+  step: 0,
+  initialSetup: false
+}
+```
+
+#### Completion Rewards:
+- **Points Bonus**: +200 points
+- **XP Bonus**: +300 XP
+- **Achievement**: "Graduate" achievement unlocked
+- **System Reset**: Game speed returns to normal (1x)
+
+### 8.4 Tutorial Controls
+- **Skip Option**: Players can skip tutorial with confirmation dialog
+- **Reset Function**: Debug function to restart tutorial (available in debug panel)
+- **Auto-Trigger**: Tutorial starts automatically for new players after 2-second delay
+
+## 9. Achievement System
+
+### 9.1 Achievement Categories
+
+#### Progression Achievements
+| Achievement | Trigger | Reward | Icon |
+|-------------|---------|--------|------|
+| First Expedition | Deploy first expedition | 100 pts | 🚀 |
+| Graduate | Complete tutorial | 200 pts | 🎓 |
+| Junior Miner | Reach level 5 | 300 pts | ⭐ |
+| Expert Miner | Reach level 10 | 500 pts | 🌟 |
+
+#### Resource Management
+| Achievement | Trigger | Reward | Icon |
+|-------------|---------|--------|------|
+| Resource Collector | Collect first resource | 75 pts | 💎 |
+| Merchant | Sell first resource | 100 pts | 💰 |
+| Resource Hoarder | Collect 50 resources total | 250 pts | 📦 |
+
+#### Advanced Gameplay
+| Achievement | Trigger | Reward | Icon |
+|-------------|---------|--------|------|
+| Speed Demon | Use first booster | 50 pts | ⚡ |
+| Territory Expansion | Purchase first additional cell | 150 pts | 🏗️ |
+| Efficient Miner | Complete 10 extractions in session | 200 pts | ⚙️ |
+| Big Spender | Spend 10,000 points total | 400 pts | 💸 |
+
+#### Elite Resources
+| Achievement | Trigger | Reward | Icon |
+|-------------|---------|--------|------|
+| Rare Collector | Extract Rare Earth Elements | 500 pts | 💠 |
+| Platinum Miner | Extract Platinum Group Metals | 750 pts | 🥈 |
+| Helium Master | Extract Helium-3 | 1,000 pts | 🥇 |
+
+#### Territory Control
+| Achievement | Trigger | Reward | Icon |
+|-------------|---------|--------|------|
+| Expanding Operations | Purchase second expedition | 150 pts | 🔄 |
+| Lunar Empire | Own 10 cells | 1,000 pts | 👑 |
+
+### 9.2 Achievement Mechanics
+
+#### Automatic Tracking:
+The system tracks player statistics continuously:
+```javascript
+stats: {
+  expeditionsDeployed: 0,
+  expeditionsPurchased: 0,
+  boostersUsed: 0,
+  resourcesCollected: 0,
+  resourcesSold: 0,
+  cellsPurchased: 0,
+  cellsOwned: 3,
+  level: 1,
+  pointsSpent: 0,
+  extractionsThisSession: 0,
+  rareResourcesCollected: 0,
+  platinumResourcesCollected: 0,
+  heliumResourcesCollected: 0
+}
+```
+
+#### Achievement Conditions:
+Each achievement has a condition function that checks against player stats:
+```javascript
+condition: (stats) => stats.resourcesCollected >= 50
+```
+
+#### Reward System:
+- **Point Rewards**: Automatic point addition to player balance
+- **Visual Notification**: Toast notification with achievement details
+- **Achievement Popup**: Animated popup with achievement icon and details
+- **Persistent Storage**: Achievement state saved in game state
+
+### 9.3 Achievement Display
+
+#### Achievement Panel:
+- **Completion Status**: Shows completed vs. total achievements
+- **Progress Tracking**: Displays progress for relevant achievements (e.g., "45/50 resources")
+- **Completion Rate**: Percentage of achievements unlocked
+- **Sorting**: Completed achievements shown first, then by reward value
+
+#### Visual Indicators:
+- **Completed**: ✅ checkmark with completion date
+- **In Progress**: Shows current progress toward goal
+- **Locked**: Standard display with reward information
+
+## 10. Authentication System
+
+### 10.1 Authentication Modes
+
+#### Guest Mode
+- **Local Storage**: Game state saved to browser localStorage
+- **No Account Required**: Immediate gameplay access
+- **Limited Features**: Cannot share achievements or sync across devices
+- **Upgrade Path**: Can create account later to preserve progress
+
+#### Registered User Mode
+- **Cloud Sync**: Game state synchronized with Supabase backend
+- **Cross-Device**: Access game from multiple devices
+- **Achievement Sharing**: Can share progress and achievements
+- **Data Persistence**: Permanent game state storage
+
+### 10.2 Authentication Flow
+
+#### First-Time Visitor Experience:
+1. **Auto-Detection**: System checks for existing auth token
+2. **Modal Display**: Auth modal appears after 1-second delay if no token found
+3. **Mode Selection**: Three options presented:
+   - **Play as Guest**: Immediate access, local storage
+   - **Create Account**: Registration form with email/password
+   - **Sign In**: Login form for existing users
+
+#### Registration Process:
+1. **Form Validation**: Username, email, and password (min 6 chars) required
+2. **Account Creation**: Supabase Auth integration
+3. **Profile Setup**: Creates player profile in database
+4. **State Migration**: Merges any local guest progress with new account
+5. **Welcome Message**: Success notification and UI update
+
+#### Sign-In Process:
+1. **Credential Validation**: Email and password verification
+2. **JWT Token**: Secure authentication token issued
+3. **State Loading**: Downloads saved game state from server
+4. **UI Update**: User display shows username and sign-out option
+
+### 10.3 Authentication Security
+
+#### JWT-Based Authentication:
+- **Secure Tokens**: Industry-standard JWT tokens for session management
+- **Automatic Refresh**: Token refresh handling for extended sessions
+- **Row-Level Security**: Database policies restrict access to user's own data
+
+#### Data Protection:
+- **Password Hashing**: Supabase handles secure password storage
+- **CORS Protection**: Cross-origin request restrictions
+- **Input Validation**: Server-side validation of all user inputs
+- **SQL Injection Prevention**: Parameterized queries only
+
+### 10.4 User Session Management
+
+#### Session States:
+```javascript
+// Guest User
+{
+  username: 'Guest Player',
+  isGuest: true,
+  authToken: null
+}
+
+// Authenticated User
+{
+  username: 'PlayerName',
+  email: 'player@example.com',
+  isGuest: false,
+  authToken: 'jwt_token_here'
+}
+```
+
+#### Session Actions:
+- **Sign Out**: Clears auth token, switches to guest mode
+- **Account Upgrade**: Converts guest session to registered account
+- **State Sync**: Periodic saving of game state to server
+- **Offline Handling**: Graceful degradation when server unavailable
+
+### 10.5 User Interface Integration
+
+#### Header Display:
+- **Guest Mode**: Shows "Guest Player" with "Create Account" button
+- **Authenticated**: Shows username with "Sign Out" button
+- **Dynamic Updates**: Real-time UI updates based on auth state
+
+#### Modal Management:
+- **Progressive Forms**: Mode selection → Registration/Login forms
+- **Error Handling**: Clear error messages for failed attempts
+- **Form Validation**: Real-time input validation and feedback
+- **Responsive Design**: Works on all device sizes
+
+#### Navigation Flow:
+- **Seamless Transition**: No game interruption during auth changes
+- **State Preservation**: Game continues without data loss
+- **User Feedback**: Clear notifications for all auth actions
+
+## 11. Integration Points
+
+### 11.1 System Interactions
+
+#### Tutorial ↔ Achievements:
+- Tutorial completion awards "Graduate" achievement
+- Tutorial tracks achievement-eligible actions during guidance
+- Achievement progress visible during tutorial (when relevant)
+
+#### Authentication ↔ Game State:
+- Guest mode uses localStorage for immediate play
+- Registered users get cloud sync and cross-device access
+- Achievement sharing requires authenticated account
+- Progress migration when upgrading from guest to registered
+
+#### Achievements ↔ Game Progression:
+- Achievement rewards accelerate progression
+- Resource-specific achievements encourage exploration of all extraction types
+- Level-based achievements provide progression milestones
+- Spending achievements encourage economic engagement
+
+### 11.2 Data Flow Architecture
+
+#### Tutorial System:
+```
+Game State → Tutorial Checker → UI Highlights → User Action → Progress Tracking
+```
+
+#### Achievement System:
+```
+Game Action → Stat Tracking → Condition Evaluation → Reward Grant → UI Update
+```
+
+#### Authentication System:
+```
+User Input → Validation → API Call → Token Management → State Sync → UI Update
+``` 
