@@ -201,7 +201,13 @@ class AchievementSystem {
   checkAchievements() {
     const currentState = this.game.stateManager.getState();
     const stats = currentState.stats;
-    const achievements = currentState.achievements;
+    
+    // Ensure achievements object exists
+    if (!currentState.achievements) {
+      this.game.stateManager.updateState({ achievements: {} });
+    }
+    
+    const achievements = currentState.achievements || {};
 
     Object.entries(this.achievementDefinitions).forEach(([id, definition]) => {
       if (!achievements[id] || !achievements[id].completed) {

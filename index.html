@@ -977,7 +977,7 @@
             border: 2px solid #444;
             display: flex;
             flex-direction: column;
-            max-height: 500px;
+            height: 500px;
         }
 
         .tab-container {
@@ -1145,16 +1145,14 @@
                 padding: 15px;
             }
             
-            .deployment-center {
+            .resource-panel {
                 order: 2;
                 padding: 15px;
             }
             
-            .purchase-panel {
+            .booster-panel {
                 order: 3;
-                min-height: auto;
-                max-height: 400px;
-                overflow-y: auto;
+                height: 400px;
             }
             
             .hex-grid {
@@ -1710,7 +1708,7 @@
                 };
                 window.showAchievements = () => {
                     if (game.achievements) {
-                        game.achievements.showAchievements();
+                        game.achievements.showAchievementsPanel();
                     }
                 };
                 window.hideAchievements = () => {

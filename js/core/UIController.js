@@ -54,6 +54,7 @@ class UIController {
     this.updateInventory();
     this.updateTabContent();
     this.updateSelectionStatus();
+    this.syncTabButtons();
   }
 
   // Update header with player stats
@@ -533,6 +534,9 @@ class UIController {
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === tabName);
     });
+    
+    // Update tab content to match the new active tab
+    this.updateTabContent();
   }
 
   // Purchase expedition
@@ -760,6 +764,14 @@ class UIController {
     if (this.progressUpdateInterval) {
       clearInterval(this.progressUpdateInterval);
     }
+  }
+
+  // Ensure tab buttons match the state
+  syncTabButtons() {
+    const state = this.stateManager.getState();
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === state.activeTab);
+    });
   }
 }
 
