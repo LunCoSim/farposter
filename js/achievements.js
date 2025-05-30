@@ -121,29 +121,34 @@ class AchievementSystem {
 
   // Initialize achievement stats tracking
   initializeStats() {
-    if (!this.game.gameState.stats) {
-      this.game.gameState.stats = {
-        expeditionsDeployed: 0,
-        expeditionsPurchased: 0,
-        boostersUsed: 0,
-        resourcesCollected: 0,
-        resourcesSold: 0,
-        cellsPurchased: 0,
-        cellsOwned: this.game.gameState.ownedCells,
-        level: this.game.gameState.level,
-        pointsSpent: 0,
-        extractionsThisSession: 0,
-        rareResourcesCollected: 0,
-        platinumResourcesCollected: 0,
-        heliumResourcesCollected: 0
-      };
+    const currentState = this.game.stateManager.getState();
+    if (!currentState.stats) {
+      // Initialize stats in the state manager
+      this.game.stateManager.updateState({
+        stats: {
+          expeditionsDeployed: 0,
+          expeditionsPurchased: 0,
+          boostersUsed: 0,
+          resourcesCollected: 0,
+          resourcesSold: 0,
+          cellsPurchased: 0,
+          cellsOwned: currentState.ownedCells,
+          level: currentState.level,
+          pointsSpent: 0,
+          extractionsThisSession: 0,
+          rareResourcesCollected: 0,
+          platinumResourcesCollected: 0,
+          heliumResourcesCollected: 0
+        }
+      });
     }
   }
 
   // Track a specific action
   trackAction(action, data = {}) {
     this.initializeStats();
-    const stats = this.game.gameState.stats;
+    const currentState = this.game.stateManager.getState();
+    const stats = { ...currentState.stats };
 
     switch (action) {
       case 'expedition_deployed':
@@ -175,15 +180,18 @@ class AchievementSystem {
         break;
       case 'cell_purchased':
         stats.cellsPurchased++;
-        stats.cellsOwned = this.game.gameState.ownedCells;
+        stats.cellsOwned = currentState.ownedCells;
         break;
       case 'points_spent':
         stats.pointsSpent += data.amount || 0;
         break;
       case 'level_up':
-        stats.level = this.game.gameState.level;
+        stats.level = currentState.level;
         break;
     }
+
+    // Update stats in state manager
+    this.game.stateManager.updateState({ stats });
 
     // Check for new achievements
     this.checkAchievements();
@@ -191,8 +199,9 @@ class AchievementSystem {
 
   // Check all achievements against current stats
   checkAchievements() {
-    const stats = this.game.gameState.stats;
-    const achievements = this.game.gameState.achievements;
+    const currentState = this.game.stateManager.getState();
+    const stats = currentState.stats;
+    const achievements = currentState.achievements;
 
     Object.entries(this.achievementDefinitions).forEach(([id, definition]) => {
       if (!achievements[id] || !achievements[id].completed) {
@@ -211,9 +220,12 @@ class AchievementSystem {
       return;
     }
 
+    const currentState = this.game.stateManager.getState();
+    const achievements = { ...currentState.achievements };
+
     // Initialize achievement in game state if not exists
-    if (!this.game.gameState.achievements[achievementId]) {
-      this.game.gameState.achievements[achievementId] = {
+    if (!achievements[achievementId]) {
+      achievements[achievementId] = {
         completed: false,
         title: definition.title,
         description: definition.description,
@@ -222,16 +234,19 @@ class AchievementSystem {
     }
 
     // Check if already completed
-    if (this.game.gameState.achievements[achievementId].completed) {
+    if (achievements[achievementId].completed) {
       return;
     }
 
     // Award the achievement
-    this.game.gameState.achievements[achievementId].completed = true;
-    this.game.gameState.achievements[achievementId].completedAt = Date.now();
+    achievements[achievementId].completed = true;
+    achievements[achievementId].completedAt = Date.now();
 
-    // Give reward
-    this.game.gameState.points += definition.reward;
+    // Update state with new achievement and points
+    this.game.stateManager.updateState({
+      achievements,
+      points: currentState.points + definition.reward
+    });
     
     // Show notification
     this.game.showNotification(
@@ -241,10 +256,6 @@ class AchievementSystem {
     );
 
     console.log(`🏆 Achievement unlocked: ${definition.title}`);
-
-    // Update UI and save
-    this.game.updateUI();
-    this.game.saveGameState();
 
     // Show achievement popup after a delay
     setTimeout(() => {
@@ -317,8 +328,8 @@ class AchievementSystem {
     // Sort achievements: completed first, then by reward value
     const sortedAchievements = Object.entries(this.achievementDefinitions)
       .sort(([idA, defA], [idB, defB]) => {
-        const completedA = this.game.gameState.achievements[idA]?.completed || false;
-        const completedB = this.game.gameState.achievements[idB]?.completed || false;
+        const completedA = this.game.stateManager.getState().achievements[idA]?.completed || false;
+        const completedB = this.game.stateManager.getState().achievements[idB]?.completed || false;
         
         if (completedA !== completedB) {
           return completedB - completedA; // Completed first
@@ -328,7 +339,7 @@ class AchievementSystem {
 
     // Create achievement items
     sortedAchievements.forEach(([id, definition]) => {
-      const achievement = this.game.gameState.achievements[id];
+      const achievement = this.game.stateManager.getState().achievements[id];
       const completed = achievement?.completed || false;
 
       const item = document.createElement('div');
@@ -337,7 +348,7 @@ class AchievementSystem {
       let progressText = '';
       if (!completed) {
         // Show progress for some achievements
-        const stats = this.game.gameState.stats || {};
+        const stats = this.game.stateManager.getState().stats || {};
         if (id === 'resource_hoarder') {
           progressText = ` (${stats.resourcesCollected || 0}/50)`;
         } else if (id === 'big_spender') {
@@ -365,7 +376,7 @@ class AchievementSystem {
     });
 
     // Show completion stats
-    const completedCount = Object.values(this.game.gameState.achievements)
+    const completedCount = Object.values(this.game.stateManager.getState().achievements)
       .filter(a => a?.completed).length;
     const totalCount = Object.keys(this.achievementDefinitions).length;
     
@@ -398,8 +409,10 @@ class AchievementSystem {
 
   // Get achievement completion stats
   getCompletionStats() {
-    const achievements = this.game.gameState.achievements;
-    const completed = Object.values(achievements).filter(a => a?.completed).length;
+    const currentState = this.game.stateManager.getState();
+    const stats = currentState.stats;
+    const completed = Object.values(currentState.achievements)
+      .filter(a => a?.completed).length;
     const total = Object.keys(this.achievementDefinitions).length;
     
     return {
@@ -407,6 +420,31 @@ class AchievementSystem {
       total,
       percentage: Math.round((completed / total) * 100)
     };
+  }
+
+  // Share progress functionality
+  shareProgress() {
+    const completionStats = this.getCompletionStats();
+    const currentState = this.game.stateManager.getState();
+    
+    const shareText = `🌙 Farpost Progress Update!\n\n🏆 Achievements: ${completionStats.completed}/${completionStats.total} (${completionStats.percentage}%)\n⭐ Level: ${currentState.level}\n💰 Points: ${currentState.points}\n🏗️ Cells Owned: ${currentState.ownedCells}/${currentState.maxCells}\n\nPlay the lunar mining game: https://farpost.lunco.space`;
+    
+    if (navigator.share) {
+      // Use native sharing if available
+      navigator.share({
+        title: '🌙 Farpost - My Progress',
+        text: shareText,
+        url: 'https://farpost.lunco.space'
+      }).catch(console.error);
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(shareText).then(() => {
+        this.game.showNotification('Progress copied to clipboard!', 'success');
+      }).catch(() => {
+        // Final fallback: show the text in an alert
+        alert(shareText);
+      });
+    }
   }
 }
 
@@ -420,6 +458,12 @@ window.showAchievements = function() {
 window.hideAchievements = function() {
   if (window.game && window.game.achievements) {
     window.game.achievements.hideAchievementsPanel();
+  }
+};
+
+window.shareProgress = function() {
+  if (window.game && window.game.achievements) {
+    window.game.achievements.shareProgress();
   }
 };
 
