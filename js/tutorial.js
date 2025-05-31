@@ -173,10 +173,9 @@ class TutorialSystem {
     const modal = document.getElementById('tutorialModal');
     if (modal) {
       modal.classList.remove('show');
-      // Don't hide the modal yet - let completeStep handle the transition
-      console.log('🎓 Removed show class from modal');
+      modal.style.display = 'none';
+      console.log('🎓 Modal hidden completely');
     }
-    // Don't clear highlights here - let completeStep handle it
   }
 
   // Highlight specific elements
@@ -396,7 +395,11 @@ class TutorialSystem {
   // Skip tutorial
   skipTutorial() {
     if (confirm('Are you sure you want to skip the tutorial? You can restart it later from the debug panel.')) {
-      this.completeTutorial();
+      // Reset tutorial without bonuses instead of completing it
+      this.resetTutorial();
+      if (this.game.showNotification) {
+        this.game.showNotification('Tutorial skipped. You can restart it from the debug panel.', 'info');
+      }
     }
   }
 
@@ -473,7 +476,7 @@ class TutorialSystem {
 window.hideTutorialModal = function() {
   console.log('🎓 Tutorial modal "Got it!" clicked');
   if (window.game && window.game.tutorial && window.game.tutorial.isActive) {
-    // Directly progress to next step
+    // Call progressToNextStep to properly advance the tutorial
     window.game.tutorial.progressToNextStep();
   } else {
     console.warn('🎓 Tutorial not available or not active');
@@ -483,7 +486,13 @@ window.hideTutorialModal = function() {
 window.skipTutorial = function() {
   console.log('🎓 Skip tutorial clicked');
   if (window.game && window.game.tutorial) {
-    window.game.tutorial.skipTutorial();
+    // Ask for confirmation and reset tutorial without bonuses
+    if (confirm('Are you sure you want to skip the tutorial?')) {
+      window.game.tutorial.resetTutorial();
+      if (window.game.showNotification) {
+        window.game.showNotification('Tutorial skipped. You can restart it from the debug panel.', 'info');
+      }
+    }
   } else {
     console.warn('🎓 Tutorial not available');
   }

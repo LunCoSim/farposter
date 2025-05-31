@@ -1516,7 +1516,8 @@
             <h1>🌙 Farpost</h1>
             <div style="display: flex; gap: 10px; margin-top: 5px;">
                 <button onclick="showAchievements()" class="achievements-btn">🏆 Achievements</button>
-                <button onclick="startTutorial()" class="tutorial-btn tutorial-allowed" style="background: #2196F3; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; transition: background 0.3s;">�� Tutorial</button>
+                <button onclick="startTutorial()" class="tutorial-btn tutorial-allowed" style="background: #2196F3; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; transition: background 0.3s;">📖 Tutorial</button>
+                <button onclick="debugGameState()" class="tutorial-btn" style="background: #ff9800; border: none; color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; transition: background 0.3s;">🔍 Debug</button>
                 <button onclick="shareProgress()" class="share-achievement-btn" id="shareBtn" style="display: none;">📤 Share</button>
                 <div id="userDisplay" style="font-size: 12px; color: #aaa; margin-left: 10px;"></div>
             </div>
@@ -1688,62 +1689,143 @@
         // Global game instance
         let game = null;
 
+        // Define functions immediately to prevent "undefined" errors
+        // These will be redefined with proper game references after initialization
+        window.resetGame = () => {
+            if (game) {
+                game.resetGame();
+            } else {
+                console.warn('Game not initialized yet');
+                location.reload();
+            }
+        };
+        
+        window.resetTutorial = () => {
+            if (game && game.tutorial) {
+                game.tutorial.resetTutorial();
+            } else {
+                console.warn('Tutorial not available - game not initialized');
+            }
+        };
+        
+        window.startTutorial = () => {
+            if (game && game.tutorial) {
+                // Reset tutorial first, then start it
+                game.tutorial.resetTutorial();
+                setTimeout(() => {
+                    game.tutorial.startTutorial();
+                }, 100);
+            } else {
+                console.warn('Tutorial not available - game not initialized yet');
+                // Try again after a short delay
+                setTimeout(() => {
+                    if (game && game.tutorial) {
+                        window.startTutorial();
+                    } else {
+                        alert('Tutorial system is not ready yet. Please refresh the page and try again.');
+                    }
+                }, 1000);
+            }
+        };
+        
+        window.toggleDebug = () => {
+            const debugPanel = document.getElementById('debugPanel');
+            if (debugPanel) {
+                debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+            }
+        };
+        
+        window.showAchievements = () => {
+            if (game && game.achievements) {
+                game.achievements.showAchievementsPanel();
+            } else {
+                console.warn('Achievements not available - game not initialized');
+            }
+        };
+        
+        window.hideAchievements = () => {
+            const panel = document.getElementById('achievementsPanel');
+            if (panel) panel.style.display = 'none';
+        };
+        
+        window.shareProgress = () => {
+            if (game && game.achievements) {
+                game.achievements.shareProgress();
+            } else {
+                console.warn('Share progress not available - game not initialized');
+            }
+        };
+        
+        window.skipTutorial = () => {
+            if (game && game.tutorial) {
+                // Call the reset method instead of the class method to avoid bonuses
+                if (confirm('Are you sure you want to skip the tutorial?')) {
+                    game.tutorial.resetTutorial();
+                    if (game.showNotification) {
+                        game.showNotification('Tutorial skipped. You can restart it from the debug panel.', 'info');
+                    }
+                }
+            } else {
+                console.warn('Skip tutorial not available - game not initialized');
+            }
+        };
+        
+        window.hideTutorialModal = () => {
+            if (game && game.tutorial && game.tutorial.isActive) {
+                // Call progressToNextStep to properly advance the tutorial
+                game.tutorial.progressToNextStep();
+            } else {
+                console.warn('Tutorial modal close not available - tutorial not active or game not initialized');
+            }
+        };
+
+        window.debugGameState = () => {
+            console.log('🔍 Debug Game State:');
+            console.log('- game object:', game);
+            console.log('- window.game:', window.game);
+            console.log('- CONFIG:', window.CONFIG);
+            console.log('- GameEngine class:', window.GameEngine);
+            console.log('- TutorialSystem class:', window.TutorialSystem);
+            
+            if (game) {
+                console.log('- game.isInitialized:', game.isInitialized);
+                console.log('- game.tutorial:', game.tutorial);
+                console.log('- game.stateManager:', game.stateManager);
+            }
+            
+            // Show alert with basic info
+            const status = game ? 
+                (game.isInitialized ? 'Game initialized ✅' : 'Game not initialized ❌') : 
+                'Game object not created ❌';
+            alert(`Debug Info:\n${status}\nCheck console for details`);
+        };
+
         // Initialize game when page loads
         document.addEventListener('DOMContentLoaded', async () => {
             try {
+                console.log('🎮 Starting game initialization...');
+                
+                // Check if required classes are available
+                console.log('🔍 Checking dependencies...');
+                console.log('- GameEngine:', typeof GameEngine);
+                console.log('- GameStateManager:', typeof GameStateManager);
+                console.log('- ResourceManager:', typeof ResourceManager);
+                console.log('- UIController:', typeof UIController);
+                console.log('- FarpostAPI:', typeof FarpostAPI);
+                console.log('- FarcasterIntegration:', typeof FarcasterIntegration);
+                console.log('- TutorialSystem:', typeof TutorialSystem);
+                console.log('- AchievementSystem:', typeof AchievementSystem);
+                
                 // Create and initialize the new game engine
+                console.log('🎮 Creating GameEngine instance...');
                 game = new GameEngine();
+                console.log('🎮 GameEngine created, calling init()...');
                 await game.init();
                 
                 // Expose game instance globally for legacy compatibility
                 window.game = game;
                 
-                // Legacy function mappings for backward compatibility
-                window.resetGame = () => game.resetGame();
-                window.resetTutorial = () => {
-                    if (game.tutorial) {
-                        game.tutorial.resetTutorial();
-                    }
-                };
-                window.startTutorial = () => {
-                    if (game.tutorial) {
-                        // Reset tutorial first, then start it
-                        game.tutorial.resetTutorial();
-                        setTimeout(() => {
-                            game.tutorial.startTutorial();
-                        }, 100);
-                    }
-                };
-                window.toggleDebug = () => {
-                    const debugPanel = document.getElementById('debugPanel');
-                    if (debugPanel) {
-                        debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
-                    }
-                };
-                window.showAchievements = () => {
-                    if (game.achievements) {
-                        game.achievements.showAchievementsPanel();
-                    }
-                };
-                window.hideAchievements = () => {
-                    const panel = document.getElementById('achievementsPanel');
-                    if (panel) panel.style.display = 'none';
-                };
-                window.shareProgress = () => {
-                    if (game.achievements) {
-                        game.achievements.shareProgress();
-                    }
-                };
-                window.skipTutorial = () => {
-                    if (game.tutorial) {
-                        game.tutorial.skipTutorial();
-                    }
-                };
-                window.hideTutorialModal = () => {
-                    if (game.tutorial) {
-                        game.tutorial.hideTutorialModal();
-                    }
-                };
+                console.log('🎮 Game engine initialized successfully');
 
                 // Setup debug speed slider
                 const speedSlider = document.getElementById('speedSlider');
@@ -1803,6 +1885,7 @@
                 
             } catch (error) {
                 console.error('Failed to initialize game:', error);
+                console.error('Error stack:', error.stack);
                 
                 // Fallback to display error message
                 document.body.innerHTML = `
