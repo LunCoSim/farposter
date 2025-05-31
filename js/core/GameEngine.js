@@ -373,14 +373,20 @@ class GameEngine {
     return this.config;
   }
 
-  // Purchase expedition (public API)
+  // Purchase expedition
   purchaseExpedition(resourceType) {
-    try {
-      this.stateManager.purchaseExpedition(resourceType);
+    const result = this.stateManager.purchaseExpedition(resourceType);
+    if (result.success) {
+      // Track tutorial action
+      if (this.tutorial) {
+        this.tutorial.checkAction('purchase_expedition', { resourceType });
+      }
+      
+      this.uiController.updateUI();
       this.showNotification(`Purchased ${resourceType} expedition!`, 'success');
-    } catch (error) {
-      this.showNotification(error.message, 'error');
+      this.resourceManager.processStateChange();
     }
+    return result;
   }
 
   // Purchase booster (public API)
@@ -403,30 +409,44 @@ class GameEngine {
     }
   }
 
-  // Deploy expedition (public API)
+  // Deploy expedition to cell
   deployExpedition(cellIndex, resourceType = null) {
-    try {
-      const state = this.stateManager.getState();
-      const targetResourceType = resourceType || state.selectedExpedition;
-      
-      if (!targetResourceType) {
-        this.showNotification('No expedition selected', 'error');
-        return;
+    const result = this.resourceManager.deployExpedition(cellIndex, resourceType);
+    if (result.success) {
+      // Track tutorial action
+      if (this.tutorial) {
+        this.tutorial.checkAction('deploy_expedition', { cellIndex, resourceType });
       }
-
-      this.resourceManager.deployExpedition(cellIndex, targetResourceType);
-    } catch (error) {
-      this.showNotification(error.message, 'error');
+      
+      this.uiController.updateUI();
+      this.showNotification(`Expedition deployed to cell ${cellIndex + 1}!`, 'success');
+      
+      // Emit event for achievements
+      this.stateManager.emit('expeditionDeployed', { cellIndex, resourceType });
+    } else {
+      this.showNotification(result.error, 'error');
     }
+    return result;
   }
 
-  // Collect resource (public API)
+  // Collect resource from cell
   collectResource(cellIndex) {
-    try {
-      this.resourceManager.collectResource(cellIndex);
-    } catch (error) {
-      this.showNotification(error.message, 'error');
+    const result = this.resourceManager.collectResource(cellIndex);
+    if (result.success) {
+      // Track tutorial action
+      if (this.tutorial) {
+        this.tutorial.checkAction('collect_resource', { cellIndex });
+      }
+      
+      this.uiController.updateUI();
+      this.showNotification(`Collected ${result.resourceType}!`, 'success');
+      
+      // Emit event for achievements
+      this.stateManager.emit('resourceCollected', { cellIndex, resourceType: result.resourceType });
+    } else {
+      this.showNotification(result.error, 'error');
     }
+    return result;
   }
 
   // Use booster (public API)
@@ -446,17 +466,27 @@ class GameEngine {
     }
   }
 
-  // Sell resources (public API)
+  // Sell resources
   sellResources(resourceType, amount = null) {
-    try {
-      const result = this.resourceManager.sellResources(resourceType, amount);
-      this.showNotification(
-        `Sold ${result.amount} ${resourceType} for ${result.pointsGained} points! (+${result.xpGained} XP)`, 
-        'success'
-      );
-    } catch (error) {
-      this.showNotification(error.message, 'error');
+    const result = this.resourceManager.sellResources(resourceType, amount);
+    if (result.success) {
+      // Track tutorial action
+      if (this.tutorial) {
+        this.tutorial.checkAction('sell_resources', { resourceType, amount });
+      }
+      
+      this.uiController.updateUI();
+      const message = resourceType === 'all' 
+        ? `Sold all resources for ${result.pointsGained} points!`
+        : `Sold ${amount || result.amount} ${resourceType} for ${result.pointsGained} points!`;
+      this.showNotification(message, 'success');
+      
+      // Check for level up
+      this.stateManager.checkLevelUp();
+    } else {
+      this.showNotification(result.error, 'error');
     }
+    return result;
   }
 
   // Select expedition (public API)
