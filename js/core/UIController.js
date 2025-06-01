@@ -416,10 +416,16 @@ class UIController {
     const state = this.stateManager.getState();
     container.innerHTML = '<div class="panel-title">Purchase Expeditions</div>';
     
+    // Check if tutorial is active
+    const isTutorialActive = state.tutorial && state.tutorial.isActive;
+    
     Object.entries(this.stateManager.config.resources).forEach(([resourceType, config]) => {
       const canAfford = state.points >= config.cost;
       const levelOk = state.level >= config.level;
-      const isDisabled = !canAfford || !levelOk;
+      
+      // During tutorial, only allow Lunar Regolith expedition purchases
+      const tutorialRestricted = isTutorialActive && resourceType !== 'Lunar Regolith';
+      const isDisabled = !canAfford || !levelOk || tutorialRestricted;
       
       const item = document.createElement('div');
       item.className = `resource-item ${isDisabled ? 'disabled' : ''}`;
@@ -429,6 +435,7 @@ class UIController {
           <div class="resource-value">${config.value} pts reward | ${config.time}m duration</div>
           <div class="resource-cost">Cost: ${config.cost} pts</div>
           ${!levelOk ? `<div class="resource-cost" style="color: #f44336;">Requires Level ${config.level}</div>` : ''}
+          ${tutorialRestricted ? `<div class="resource-cost" style="color: #ff9800;">Complete tutorial to unlock</div>` : ''}
         </div>
         <div class="resource-amount">Buy</div>
       `;

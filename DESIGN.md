@@ -365,6 +365,7 @@ The tutorial system guides new players through the core game mechanics in a stru
 - **Speed Acceleration**: 60x faster extraction times during tutorial
 - **UI Blocking**: Disables non-relevant UI elements with `.tutorial-blocked` class
 - **Visual Highlights**: Highlights relevant elements with `.tutorial-highlight` class
+- **Purchase Restrictions**: During tutorial, only Lunar Regolith expeditions can be purchased
 
 #### Tutorial State Management:
 ```javascript
@@ -376,11 +377,19 @@ tutorial: {
 }
 ```
 
+#### Purchase Restrictions During Tutorial:
+- **Expedition Purchases**: Only "Lunar Regolith" expeditions are available for purchase
+- **UI Feedback**: Other expeditions show "Complete tutorial to unlock" message
+- **Frontend Validation**: Purchase buttons are disabled for non-Lunar Regolith expeditions
+- **Backend Validation**: GameStateManager validates purchases and blocks non-Lunar Regolith during tutorial
+- **Visual Highlighting**: Only Lunar Regolith expedition is highlighted during purchase step
+
 #### Completion Rewards:
 - **Points Bonus**: +200 points
 - **XP Bonus**: +300 XP
 - **Achievement**: "Graduate" achievement unlocked
 - **System Reset**: Game speed returns to normal (1x)
+- **Unlock All Expeditions**: All expedition types become available for purchase
 
 ### 8.4 Tutorial Controls
 - **Skip Option**: Players can skip tutorial with confirmation dialog

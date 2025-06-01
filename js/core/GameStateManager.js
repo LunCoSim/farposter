@@ -218,6 +218,11 @@ class GameStateManager {
     const config = this.config.resources[resourceType];
     if (!config) return { valid: false, reason: 'Invalid resource type' };
     
+    // Check if tutorial is active and restrict to only Lunar Regolith
+    if (this.state.tutorial && this.state.tutorial.isActive && resourceType !== 'Lunar Regolith') {
+      return { valid: false, reason: 'Complete tutorial to unlock other expeditions' };
+    }
+    
     if (this.state.level < config.level) {
       return { valid: false, reason: `Level ${config.level} required` };
     }

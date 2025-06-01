@@ -38,7 +38,7 @@ class TutorialSystem {
       {
         id: 2,
         title: "Purchase an Expedition 🛒",
-        description: "Great! Now click on any expedition item to purchase it (Lunar Regolith is recommended for beginners).",
+        description: "Great! Now click on the 'Lunar Regolith' expedition to purchase it. During the tutorial, only Lunar Regolith expeditions are available to help you learn the basics.",
         type: 'action',
         highlight: '.resource-item:not(.disabled)',
         requiredAction: 'purchase_expedition',
@@ -496,7 +496,22 @@ class TutorialSystem {
 
   highlightBuyButtons() {
     setTimeout(() => {
-      this.applyHighlighting('.resource-item:not(.disabled)');
+      // During tutorial, specifically highlight only the Lunar Regolith expedition
+      const gameState = this.game.stateManager.getState();
+      if (gameState.tutorial && gameState.tutorial.isActive) {
+        // Find and highlight only the Lunar Regolith resource item
+        const resourceItems = document.querySelectorAll('.resource-item');
+        resourceItems.forEach(item => {
+          const resourceName = item.querySelector('.resource-name');
+          if (resourceName && resourceName.textContent === 'Lunar Regolith') {
+            item.classList.add('tutorial-highlight');
+          }
+        });
+      } else {
+        // Normal highlighting for all non-disabled items
+        this.applyHighlighting('.resource-item:not(.disabled)');
+      }
+      
       // Also highlight the tab content container to ensure scrolling works
       const tabContent = document.getElementById('tabContent');
       const resourcePanel = document.querySelector('.resource-panel');
