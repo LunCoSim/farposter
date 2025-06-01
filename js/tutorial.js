@@ -67,18 +67,41 @@ class TutorialSystem {
       },
       {
         id: 5,
-        title: "Wait for Extraction ⏰",
-        description: "Perfect! Your expedition is now extracting resources. You can see the progress timer. In real games, this takes time, but for the tutorial, it's faster!",
-        type: 'auto',
-        highlight: '.hex-cell.extracting',
-        requiredAction: 'extraction_complete',
-        onEnter: () => this.waitForExtraction(),
-        onExit: () => this.clearExtractionWait()
+        title: "Learn About Boosters ⚡",
+        description: "Perfect! Your expedition is now extracting resources. Instead of waiting, let's learn about boosters! Go to the 'Boosters' tab to see how you can speed up your expeditions.",
+        type: 'action',
+        highlight: '.tab-btn[data-tab="boosters"]',
+        requiredAction: 'switch_to_boosters',
+        onEnter: () => this.highlightBoostersTab(),
+        onExit: () => {
+          this.clearAllHighlights();
+          this.giveInstantExtractBooster();
+        }
       },
       {
         id: 6,
+        title: "Select Your Free Instant Extract! ⭐",
+        description: "Great! Here's a free Instant Extract booster for the tutorial. Click on it to select it for use on your extracting expedition.",
+        type: 'action',
+        highlight: '.booster-item',
+        requiredAction: 'select_booster',
+        onEnter: () => this.highlightBoosterItems(),
+        onExit: () => this.clearAllHighlights()
+      },
+      {
+        id: 7,
+        title: "Use Instant Extract Booster 🚀",
+        description: "Perfect! Now you have an Instant Extract booster selected. Click on your extracting cell to instantly complete the expedition!",
+        type: 'action',
+        highlight: '.hex-cell.extracting',
+        requiredAction: 'booster_applied',
+        onEnter: () => this.highlightExtractingCell(),
+        onExit: () => this.clearAllHighlights()
+      },
+      {
+        id: 8,
         title: "Collect Your Resources 💎",
-        description: "Your extraction is complete! Click on the glowing cell to collect your first lunar resource.",
+        description: "Excellent! The booster instantly completed your extraction. Click on the glowing cell to collect your resource.",
         type: 'action',
         highlight: '.hex-cell.ready',
         requiredAction: 'collect_resource',
@@ -86,29 +109,9 @@ class TutorialSystem {
         onExit: () => this.clearAllHighlights()
       },
       {
-        id: 7,
-        title: "Apply Your First Booster ⚡",
-        description: "Great job! Now let's learn about boosters. Go to the 'Boosters' tab and purchase a Speed Booster to make your next expedition faster.",
-        type: 'action',
-        highlight: '.tab-btn[data-tab="boosters"]',
-        requiredAction: 'switch_to_boosters',
-        onEnter: () => this.highlightBoostersTab(),
-        onExit: () => this.clearAllHighlights()
-      },
-      {
-        id: 8,
-        title: "Purchase a Booster 🚀",
-        description: "Perfect! Now click on a Speed Booster item to purchase it.",
-        type: 'action',
-        highlight: '.booster-item:not(.disabled)',
-        requiredAction: 'purchase_booster',
-        onEnter: () => this.highlightBoosterBuyButtons(),
-        onExit: () => this.clearAllHighlights()
-      },
-      {
         id: 9,
         title: "Sell Resources for Points 💰",
-        description: "Now you have resources! Go to the 'Sell' tab and click 'Sell All Resources' to convert them into points.",
+        description: "Now you have resources! Go to the 'Sell' tab and click on your resource to convert it into points.",
         type: 'action',
         highlight: '.tab-btn[data-tab="sell"]',
         requiredAction: 'switch_to_sell',
@@ -118,7 +121,7 @@ class TutorialSystem {
       {
         id: 10,
         title: "Complete the Sale 💎",
-        description: "Excellent! Now click on any resource item to sell it for points.",
+        description: "Excellent! Now click on your resource item to sell it for points.",
         type: 'action',
         highlight: '.resource-item',
         requiredAction: 'sell_resource',
@@ -128,7 +131,7 @@ class TutorialSystem {
       {
         id: 11,
         title: "Tutorial Complete! 🎉",
-        description: "Congratulations! You've learned the complete game loop: Buy expeditions → Deploy → Wait → Collect → Use boosters → Sell → Repeat. You're ready to build your lunar mining empire!",
+        description: "Congratulations! You've learned the complete game loop: Buy expeditions → Deploy → Use boosters → Collect → Sell → Repeat. You're ready to build your lunar mining empire!",
         type: 'modal',
         highlight: null,
         requiredAction: null,
@@ -355,15 +358,15 @@ class TutorialSystem {
     }
   }
 
-  // Setup tutorial environment (points, speed, etc.)
+  // Setup tutorial environment (points, but no speed changes)
   setupTutorialEnvironment() {
     console.log('🎓 Setting up tutorial environment...');
+    console.log('🎓 ℹ️  Tutorial runs at normal extraction speeds - no speed modifications applied');
     
     const currentState = this.game.stateManager.getState();
     
     const updates = {
       points: Math.max(1000, currentState.points),
-      debugSpeed: 60, // 60x faster extraction for tutorial
       selectedExpedition: null,
       selectedBooster: null,
       mode: 'select'
@@ -530,9 +533,10 @@ class TutorialSystem {
     }, 100);
   }
 
-  highlightBoosterBuyButtons() {
+  highlightBoosterItems() {
     setTimeout(() => {
-      this.applyHighlighting('.booster-item:not(.disabled)');
+      // Highlight specifically the Instant Extract booster in the inventory
+      this.applyHighlighting('.inventory-item.booster-item');
     }, 100);
   }
 
@@ -592,6 +596,18 @@ class TutorialSystem {
     
     // Check for specific state changes that indicate actions
     
+    // Tab switching
+    if (this.hasTabSwitchOccurred(oldState, newState)) {
+      const newTab = newState.activeTab;
+      if (newTab === 'buy') {
+        this.handleAction('switch_to_buy');
+      } else if (newTab === 'boosters') {
+        this.handleAction('switch_to_boosters');
+      } else if (newTab === 'sell') {
+        this.handleAction('switch_to_sell');
+      }
+    }
+    
     // Expedition purchase
     if (this.hasExpeditionPurchaseOccurred(oldState, newState)) {
       this.handleAction('purchase_expedition');
@@ -612,6 +628,16 @@ class TutorialSystem {
       this.handleAction('purchase_booster');
     }
     
+    // Booster selection
+    if (this.hasBoosterSelectionOccurred(oldState, newState)) {
+      this.handleAction('select_booster');
+    }
+    
+    // Booster application (specifically for instant extract)
+    if (this.hasBoosterApplicationOccurred(oldState, newState)) {
+      this.handleAction('booster_applied');
+    }
+    
     // Resource sale
     if (this.hasResourceSaleOccurred(oldState, newState)) {
       this.handleAction('sell_resource');
@@ -619,6 +645,10 @@ class TutorialSystem {
   }
 
   // Helper methods to detect state changes
+  hasTabSwitchOccurred(oldState, newState) {
+    return oldState.activeTab !== newState.activeTab;
+  }
+
   hasExpeditionPurchaseOccurred(oldState, newState) {
     const oldTotal = Object.values(oldState.expeditions || {}).reduce((sum, count) => sum + count, 0);
     const newTotal = Object.values(newState.expeditions || {}).reduce((sum, count) => sum + count, 0);
@@ -641,6 +671,27 @@ class TutorialSystem {
     const oldTotal = Object.values(oldState.boosters || {}).reduce((sum, count) => sum + count, 0);
     const newTotal = Object.values(newState.boosters || {}).reduce((sum, count) => sum + count, 0);
     return newTotal > oldTotal;
+  }
+
+  hasBoosterSelectionOccurred(oldState, newState) {
+    return oldState.selectedBooster !== newState.selectedBooster && newState.selectedBooster !== null;
+  }
+
+  hasBoosterApplicationOccurred(oldState, newState) {
+    // Check if instant extract booster was used (count decreased)
+    const oldInstantExtract = oldState.boosters?.['Instant Extract'] || 0;
+    const newInstantExtract = newState.boosters?.['Instant Extract'] || 0;
+    
+    // If instant extract count decreased, it was used
+    if (newInstantExtract < oldInstantExtract) {
+      return true;
+    }
+    
+    // Also check if any cell became ready instantly (extraction completed)
+    const oldReady = (oldState.cells || []).filter(cell => cell.isReady).length;
+    const newReady = (newState.cells || []).filter(cell => cell.isReady).length;
+    
+    return newReady > oldReady;
   }
 
   hasResourceSaleOccurred(oldState, newState) {
@@ -668,7 +719,6 @@ class TutorialSystem {
         step: this.currentStep,
         initialSetup: true
       },
-      debugSpeed: 1, // Reset game speed
       points: this.game.getGameState().points + 200,
       xp: this.game.getGameState().xp + 300
     });
@@ -741,7 +791,6 @@ class TutorialSystem {
         step: 0,
         initialSetup: false
       },
-      debugSpeed: 1 // Reset game speed
     });
     
     console.log('🎓 Tutorial reset complete');
@@ -797,6 +846,28 @@ class TutorialSystem {
     
     // Resume if we have valid tutorial state
     return tutorialState && tutorialState.isActive && tutorialState.currentStep >= 0;
+  }
+
+  // Highlight extracting cell
+  highlightExtractingCell() {
+    console.log('🎓 Highlighting extracting cell');
+    this.applyHighlighting('.hex-cell.extracting');
+  }
+
+  // Give instant extract booster
+  giveInstantExtractBooster() {
+    console.log('🎓 Giving instant extract booster for tutorial');
+    
+    // Add an instant extract booster to the player's inventory
+    const currentState = this.game.stateManager.getState();
+    const newBoosters = { ...currentState.boosters };
+    newBoosters['Instant Extract'] = (newBoosters['Instant Extract'] || 0) + 1;
+    
+    this.game.stateManager.updateState({
+      boosters: newBoosters
+    });
+    
+    this.game.showNotification('🎓 You received a free Instant Extract booster!', 'success');
   }
 }
 
