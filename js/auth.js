@@ -176,16 +176,14 @@ async function handleSignOut() {
 
 // Check if user should see auth modal on first visit
 function checkFirstVisit() {
-  // Check if user has any saved auth token or has seen the modal before
-  const hasToken = localStorage.getItem('farpost-auth-token');
-  const hasSeenModal = localStorage.getItem('farpost-seen-auth-modal');
+  // Skip automatic auth modal display - game now starts in guest mode by default
+  // The auth modal can still be shown manually via showAuthModal() function
+  console.log('🎮 Game starting in guest mode by default (auth modal skipped)');
   
-  if (!hasToken && !hasSeenModal) {
-    // First time visitor - show auth modal after game loads
-    setTimeout(() => {
-      showAuthModal();
-      localStorage.setItem('farpost-seen-auth-modal', 'true');
-    }, 1000);
+  // Mark as having seen the modal to prevent future automatic displays
+  const hasSeenModal = localStorage.getItem('farpost-seen-auth-modal');
+  if (!hasSeenModal) {
+    localStorage.setItem('farpost-seen-auth-modal', 'true');
   }
 }
 
