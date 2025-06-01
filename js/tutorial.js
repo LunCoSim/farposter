@@ -1,86 +1,170 @@
-// Tutorial System for Farpost Game
+/**
+ * New Tutorial System for Farpost Game
+ * Rebuilt from scratch for reliability and maintainability
+ */
 
 class TutorialSystem {
   constructor(game) {
     this.game = game;
-    this.tutorialSteps = [
+    this.isActive = false;
+    this.currentStep = 0;
+    this.tutorialData = null;
+    this.completedActions = new Set();
+    this.stepChangeTimeout = null;
+    this.extractionCheckInterval = null;
+    
+    // Tutorial step definitions
+    this.steps = [
       {
+        id: 0,
         title: "Welcome to Farpost! 🌙",
         description: "Welcome to the Moon's surface! You're about to start your lunar mining adventure. Let's learn the basics.",
+        type: 'modal', // modal, action, auto
         highlight: null,
-        action: null
+        requiredAction: null,
+        onEnter: () => this.setupTutorialEnvironment(),
+        onExit: () => console.log('Welcome step completed')
       },
       {
+        id: 1,
         title: "Buy Your First Expedition ⛏️",
         description: "First, you need to purchase an expedition to extract resources. Click on the 'Buy' tab to see available expeditions.",
+        type: 'action',
         highlight: '.tab-btn[data-tab="buy"]',
-        action: 'purchase_expedition',
-        target: null
+        requiredAction: 'switch_to_buy',
+        onEnter: () => this.highlightBuyTab(),
+        onExit: () => this.clearAllHighlights()
       },
       {
-        title: "Deploy Your Expedition 🚀",
-        description: "Great! Now you have an expedition. Select it from the Deployment Center, then click on one of your owned cells (marked with ⚡) to deploy it.",
-        highlight: '.inventory-item, .hex-cell.owned',
-        action: 'deploy_expedition',
-        target: null
+        id: 2,
+        title: "Purchase an Expedition 🛒",
+        description: "Great! Now click on any expedition item to purchase it (Lunar Regolith is recommended for beginners).",
+        type: 'action',
+        highlight: '.resource-item:not(.disabled)',
+        requiredAction: 'purchase_expedition',
+        onEnter: () => this.highlightBuyButtons(),
+        onExit: () => this.clearAllHighlights()
       },
       {
+        id: 3,
+        title: "Select Your Expedition 📦",
+        description: "Perfect! Now you have an expedition in your inventory. Click on the 'Lunar Regolith' expedition in your inventory to select it for deployment.",
+        type: 'action',
+        highlight: '.inventory-item.expedition-item',
+        requiredAction: 'select_expedition',
+        onEnter: () => this.highlightInventoryExpeditions(),
+        onExit: () => this.clearAllHighlights()
+      },
+      {
+        id: 4,
+        title: "Deploy to a Cell 🚀",
+        description: "Great! Your expedition is now selected. Click on one of your owned cells (marked with ⚡) to deploy it.",
+        type: 'action',
+        highlight: '.hex-cell.owned',
+        requiredAction: 'deploy_expedition',
+        onEnter: () => this.highlightOwnedCells(),
+        onExit: () => this.clearAllHighlights()
+      },
+      {
+        id: 5,
         title: "Wait for Extraction ⏰",
         description: "Perfect! Your expedition is now extracting resources. You can see the progress timer. In real games, this takes time, but for the tutorial, it's faster!",
+        type: 'auto',
         highlight: '.hex-cell.extracting',
-        action: 'wait_extraction',
-        target: null
+        requiredAction: 'extraction_complete',
+        onEnter: () => this.waitForExtraction(),
+        onExit: () => this.clearExtractionWait()
       },
       {
+        id: 6,
         title: "Collect Your Resources 💎",
         description: "Your extraction is complete! Click on the glowing cell to collect your first lunar resource.",
+        type: 'action',
         highlight: '.hex-cell.ready',
-        action: 'collect_resource',
-        target: null
+        requiredAction: 'collect_resource',
+        onEnter: () => this.highlightReadyCell(),
+        onExit: () => this.clearAllHighlights()
       },
       {
+        id: 7,
+        title: "Apply Your First Booster ⚡",
+        description: "Great job! Now let's learn about boosters. Go to the 'Boosters' tab and purchase a Speed Booster to make your next expedition faster.",
+        type: 'action',
+        highlight: '.tab-btn[data-tab="boosters"]',
+        requiredAction: 'switch_to_boosters',
+        onEnter: () => this.highlightBoostersTab(),
+        onExit: () => this.clearAllHighlights()
+      },
+      {
+        id: 8,
+        title: "Purchase a Booster 🚀",
+        description: "Perfect! Now click on a Speed Booster item to purchase it.",
+        type: 'action',
+        highlight: '.booster-item:not(.disabled)',
+        requiredAction: 'purchase_booster',
+        onEnter: () => this.highlightBoosterBuyButtons(),
+        onExit: () => this.clearAllHighlights()
+      },
+      {
+        id: 9,
         title: "Sell Resources for Points 💰",
         description: "Now you have resources! Go to the 'Sell' tab and click 'Sell All Resources' to convert them into points.",
-        highlight: '.tab-btn[data-tab="sell"], .sell-button',
-        action: 'sell_resources',
-        target: null
+        type: 'action',
+        highlight: '.tab-btn[data-tab="sell"]',
+        requiredAction: 'switch_to_sell',
+        onEnter: () => this.highlightSellTab(),
+        onExit: () => this.clearAllHighlights()
       },
       {
+        id: 10,
+        title: "Complete the Sale 💎",
+        description: "Excellent! Now click on any resource item to sell it for points.",
+        type: 'action',
+        highlight: '.resource-item',
+        requiredAction: 'sell_resource',
+        onEnter: () => this.highlightSellButton(),
+        onExit: () => this.clearAllHighlights()
+      },
+      {
+        id: 11,
         title: "Tutorial Complete! 🎉",
-        description: "Congratulations! You've learned the basic game loop: Buy expeditions → Deploy → Wait → Collect → Sell → Repeat. You're ready to build your lunar mining empire!",
+        description: "Congratulations! You've learned the complete game loop: Buy expeditions → Deploy → Wait → Collect → Use boosters → Sell → Repeat. You're ready to build your lunar mining empire!",
+        type: 'modal',
         highlight: null,
-        action: 'complete'
+        requiredAction: null,
+        onEnter: () => this.completeTutorial(),
+        onExit: () => console.log('Tutorial fully completed')
       }
     ];
     
-    this.isActive = false;
-    this.currentStep = 0;
-    this.completedSteps = new Set();
+    this.initializeEventListeners();
   }
 
-  // Start the tutorial
-  startTutorial() {
-    console.log('🎓 Starting tutorial...');
-    
-    const state = this.game.getGameState();
-    if (state.tutorial.completed) {
-      console.log('Tutorial already completed, resetting first...');
-      this.resetTutorial();
-      // Wait a moment for reset to complete
-      setTimeout(() => {
-        this.startTutorial();
-      }, 100);
-      return;
+  // Initialize event listeners for tutorial system
+  initializeEventListeners() {
+    // Listen for game state changes to detect tutorial progress
+    if (this.game.stateManager) {
+      this.game.stateManager.addEventListener('stateChange', (data) => {
+        if (!this.isActive) return;
+        this.checkForActionCompletion(data);
+      });
     }
+  }
 
-    // Clear any existing tutorial state - but DON'T hide modal since we're about to show it
-    this.disableTutorialBlocking();
-    this.clearHighlights();
+  // Start tutorial from the beginning
+  startTutorial() {
+    console.log('🎓 Starting tutorial system...');
     
+    // Reset tutorial state
     this.isActive = true;
     this.currentStep = 0;
-    this.completedSteps.clear();
+    this.completedActions.clear();
+    this.clearAllIntervals();
     
+    // Save tutorial state
+    this.saveTutorialState();
+    
+    // Update game state to indicate tutorial is active
     this.game.stateManager.updateState({
       tutorial: { 
         isActive: true, 
@@ -90,27 +174,203 @@ class TutorialSystem {
       }
     });
     
-    this.setupTutorialEnvironment();
-    
-    // Show the first step immediately
-    this.showStep();
+    // Start with the first step
+    this.showCurrentStep();
   }
 
-  // Setup tutorial environment
-  setupTutorialEnvironment() {
-    const state = this.game.getGameState();
+  // Resume tutorial from saved state
+  resumeTutorial() {
+    const tutorialState = this.loadTutorialState();
+    if (!tutorialState || tutorialState.completed) {
+      console.log('🎓 No tutorial state to resume');
+      return false;
+    }
     
-    // Make sure user has starting resources for tutorial
+    console.log(`🎓 Resuming tutorial from step ${tutorialState.currentStep}`);
+    
+    this.isActive = true;
+    this.currentStep = tutorialState.currentStep;
+    this.completedActions = new Set(tutorialState.completedActions || []);
+    
+    // Restore tutorial environment if needed
+    if (this.currentStep > 0) {
+    this.setupTutorialEnvironment();
+    }
+    
+    this.showCurrentStep();
+    return true;
+  }
+
+  // Show the current tutorial step
+  showCurrentStep() {
+    if (!this.isActive || this.currentStep >= this.steps.length) {
+      console.log('🎓 Tutorial completed or not active');
+      return;
+    }
+
+    const step = this.steps[this.currentStep];
+    console.log(`🎓 Showing step ${this.currentStep}: ${step.title}`);
+    
+    // Execute step enter callback
+    if (step.onEnter) {
+      step.onEnter();
+    }
+    
+    // Save current state
+    this.saveTutorialState();
+    
+    // Handle step type
+    if (step.type === 'modal') {
+      this.showModal(step);
+    } else if (step.type === 'action') {
+      this.setupActionStep(step);
+    } else if (step.type === 'auto') {
+      this.setupAutoStep(step);
+    }
+  }
+
+  // Show tutorial modal
+  showModal(step) {
+    console.log(`🎓 Showing modal for step: ${step.title}`);
+    
+    const modal = document.getElementById('tutorialModal');
+    const title = document.getElementById('tutorialTitle');
+    const description = document.getElementById('tutorialDescription');
+
+    if (!modal || !title || !description) {
+      console.error('🎓 Tutorial modal elements not found!');
+      return;
+    }
+
+    title.textContent = step.title;
+    description.textContent = step.description;
+    
+    // Show modal with animation
+    modal.style.display = 'flex';
+    requestAnimationFrame(() => {
+      modal.classList.add('show');
+    });
+    
+    // Disable tutorial blocking while modal is visible
+    this.disableBlocking();
+  }
+
+  // Setup action step (requires user interaction)
+  setupActionStep(step) {
+    console.log(`🎓 Setting up action step: ${step.title}`);
+    
+    // Hide any existing modal
+    this.hideModal();
+    
+    // Wait for modal to hide, then apply highlighting
+    setTimeout(() => {
+      if (step.highlight) {
+        this.applyHighlighting(step.highlight);
+      }
+      this.enableBlocking();
+    }, 300);
+  }
+
+  // Setup auto step (automatically progresses)
+  setupAutoStep(step) {
+    console.log(`🎓 Setting up auto step: ${step.title}`);
+    
+    // Hide modal first
+    this.hideModal();
+    
+    // Apply highlighting if specified
+    setTimeout(() => {
+      if (step.highlight) {
+        this.applyHighlighting(step.highlight);
+      }
+      this.enableBlocking();
+    }, 300);
+  }
+
+  // Handle tutorial actions
+  handleAction(actionType, data = {}) {
+    if (!this.isActive) return;
+    
+    const currentStep = this.steps[this.currentStep];
+    if (!currentStep) return;
+    
+    console.log(`🎓 Handling action: ${actionType} for step ${this.currentStep}`);
+    
+    // Check if this action completes the current step
+    if (currentStep.requiredAction === actionType) {
+      this.completeCurrentStep();
+    } else {
+      // Track action for potential future use
+      this.completedActions.add(actionType);
+    }
+  }
+
+  // Complete current step and move to next
+  completeCurrentStep() {
+    if (!this.isActive) {
+      console.warn('🎓 completeCurrentStep called but tutorial is not active');
+      return;
+    }
+    
+    if (this.currentStep >= this.steps.length) {
+      console.log('🎓 Tutorial already completed');
+      this.completeTutorial();
+      return;
+    }
+    
+    const step = this.steps[this.currentStep];
+    console.log(`🎓 Completing step ${this.currentStep}: ${step.title}`);
+    
+    // Execute step exit callback
+    if (step.onExit) {
+      step.onExit();
+    }
+    
+    // Clear any step-specific intervals or timeouts
+    this.clearAllIntervals();
+    
+    // Mark action as completed
+    if (step.requiredAction) {
+      this.completedActions.add(step.requiredAction);
+    }
+    
+    // Move to next step
+    this.currentStep++;
+    
+    // Save progress
+    this.saveTutorialState();
+    
+    // Hide modal first if it's open
+    this.hideModal();
+    
+    // Check if tutorial is complete
+    if (this.currentStep >= this.steps.length) {
+      console.log('🎓 Tutorial flow completed');
+      this.completeTutorial();
+    } else {
+      // Show next step after a brief delay
+      this.stepChangeTimeout = setTimeout(() => {
+        this.showCurrentStep();
+      }, 500);
+    }
+  }
+
+  // Setup tutorial environment (points, speed, etc.)
+  setupTutorialEnvironment() {
+    console.log('🎓 Setting up tutorial environment...');
+    
+    const currentState = this.game.stateManager.getState();
+    
     const updates = {
-      points: Math.max(1000, state.points),
-      debugSpeed: 60, // 60x faster for tutorial
+      points: Math.max(1000, currentState.points),
+      debugSpeed: 60, // 60x faster extraction for tutorial
       selectedExpedition: null,
       selectedBooster: null,
       mode: 'select'
     };
 
     // Reset any active extractions for clean tutorial
-    updates.cells = state.cells.map(cell => ({
+    updates.cells = currentState.cells.map(cell => ({
       ...cell,
       extractionStartTime: null,
       extractionEndTime: null,
@@ -120,108 +380,54 @@ class TutorialSystem {
 
     this.game.stateManager.updateState(updates);
     
-    // Enable tutorial blocking
-    this.enableTutorialBlocking();
-    
     // Force UI refresh
+    if (this.game.uiController) {
     this.game.uiController.updateUI();
+    }
   }
 
-  // Show current tutorial step
-  showStep() {
-    if (!this.isActive || this.currentStep >= this.tutorialSteps.length) {
-      console.log('🎓 showStep() called but tutorial not active or completed');
-      return;
-    }
-
-    const step = this.tutorialSteps[this.currentStep];
-    console.log(`🎓 Showing tutorial step ${this.currentStep + 1}: ${step.title}`);
+  // Apply highlighting to specified elements
+  applyHighlighting(selector) {
+    console.log(`🎓 Applying highlighting to: ${selector}`);
     
-    const modal = document.getElementById('tutorialModal');
-    const title = document.getElementById('tutorialTitle');
-    const description = document.getElementById('tutorialDescription');
-
-    if (modal && title && description) {
-      title.textContent = step.title;
-      description.textContent = step.description;
-      
-      console.log('🎓 Setting modal display and show class...');
-      modal.style.display = 'flex';
-      modal.classList.add('show');
-      
-      // Enable blocking AFTER showing modal to avoid interference
-      setTimeout(() => {
-        console.log('🎓 Re-enabling tutorial blocking...');
-        this.enableTutorialBlocking();
-      }, 100); // Increased delay to ensure modal is fully visible
-      
-    } else {
-      console.error('🎓 Tutorial modal elements not found!', { modal, title, description });
-    }
-
-    // Highlight elements if specified
-    if (step.highlight) {
-      this.highlightElements(step.highlight);
-    }
-
-    console.log(`🎓 Tutorial Step ${this.currentStep + 1}: ${step.title}`);
-  }
-
-  // Hide tutorial modal
-  hideTutorialModal() {
-    console.log('🎓 hideTutorialModal() called');
-    const modal = document.getElementById('tutorialModal');
-    if (modal) {
-      modal.classList.remove('show');
-      modal.style.display = 'none';
-      console.log('🎓 Modal hidden completely');
-    }
-  }
-
-  // Highlight specific elements
-  highlightElements(selector) {
-    console.log(`🎓 Highlighting elements with selector: ${selector}`);
-    this.clearHighlights();
+    // Clear existing highlights first
+    this.clearAllHighlights();
     
+    // Apply new highlights
     const elements = document.querySelectorAll(selector);
     console.log(`🎓 Found ${elements.length} elements to highlight`);
     
-    if (elements.length === 0) {
-      console.warn(`🎓 No elements found for selector: ${selector}`);
-      return;
-    }
-    
     elements.forEach((element, index) => {
-      console.log(`🎓 Highlighting element ${index + 1}:`, element);
       element.classList.add('tutorial-highlight');
       element.classList.remove('tutorial-blocked');
+      console.log(`🎓 Highlighted element ${index + 1}:`, element);
     });
   }
 
-  // Clear all highlights
-  clearHighlights() {
+  // Clear all highlighting
+  clearAllHighlights() {
     document.querySelectorAll('.tutorial-highlight').forEach(element => {
       element.classList.remove('tutorial-highlight');
     });
   }
 
-  // Enable tutorial blocking (disable non-relevant UI)
-  enableTutorialBlocking() {
+  // Enable tutorial blocking (dim non-highlighted elements)
+  enableBlocking() {
+    console.log('🎓 Enabling tutorial blocking...');
+    
+    // Add blocking overlay
     const overlay = document.getElementById('tutorialBlockingOverlay');
     if (overlay) {
       overlay.classList.add('active');
     }
 
-    // Remove any existing blocking first
-    document.querySelectorAll('.tutorial-blocked').forEach(element => {
-      element.classList.remove('tutorial-blocked');
-    });
-
-    // Block most UI elements except tutorial-related ones
+    // Block UI elements except highlighted ones
     const elementsToBlock = [
       '.hex-cell:not(.tutorial-highlight)',
       '.inventory-item:not(.tutorial-highlight)', 
       '.tab-btn:not(.tutorial-highlight)',
+      '.resource-item:not(.tutorial-highlight)',
+      '.booster-item:not(.tutorial-highlight)',
       '.achievements-btn:not(.tutorial-highlight)',
       '#debugPanel'
     ];
@@ -234,138 +440,227 @@ class TutorialSystem {
       });
     });
 
-    // Ensure tutorial controls are never blocked
-    document.querySelectorAll('.tutorial-btn, .tutorial-skip, #tutorialModal, .tutorial-content, .tutorial-allowed').forEach(element => {
+    // Ensure tutorial controls and highlighted areas are never blocked
+    document.querySelectorAll('.tutorial-btn, .tutorial-skip, #tutorialModal, .tutorial-content, .tutorial-highlight').forEach(element => {
       element.classList.remove('tutorial-blocked');
-      element.classList.add('tutorial-allowed');
+      // Also ensure children of highlighted elements are not blocked
+      element.querySelectorAll('*').forEach(child => {
+        child.classList.remove('tutorial-blocked');
+      });
+    });
+    
+    // Special handling for tab content areas to ensure scrolling works
+    document.querySelectorAll('#tabContent, .booster-panel, .resource-panel').forEach(element => {
+      if (element.querySelector('.tutorial-highlight')) {
+        element.classList.remove('tutorial-blocked');
+        element.style.pointerEvents = 'auto';
+        element.style.overflow = 'auto';
+      }
     });
   }
 
   // Disable tutorial blocking
-  disableTutorialBlocking() {
+  disableBlocking() {
     console.log('🎓 Disabling tutorial blocking...');
     
     const overlay = document.getElementById('tutorialBlockingOverlay');
     if (overlay) {
       overlay.classList.remove('active');
-      console.log('🎓 Removed active class from blocking overlay');
     }
 
-    const blockedElements = document.querySelectorAll('.tutorial-blocked');
-    console.log(`🎓 Found ${blockedElements.length} blocked elements to unblock`);
-    
-    blockedElements.forEach(element => {
+    document.querySelectorAll('.tutorial-blocked').forEach(element => {
       element.classList.remove('tutorial-blocked');
     });
-    
-    console.log('🎓 Tutorial blocking disabled');
   }
 
-  // Check if tutorial action was completed
-  checkAction(action, data = {}) {
-    if (!this.isActive) return;
-
-    const step = this.tutorialSteps[this.currentStep];
-    if (!step) return;
-
-    let actionMatches = false;
-
-    switch (step.action) {
-      case 'purchase_expedition':
-        actionMatches = action === 'purchase_expedition' && 
-                       (!step.target || data.resourceType === step.target);
-        break;
-      case 'deploy_expedition':
-        actionMatches = action === 'deploy_expedition';
-        break;
-      case 'collect_resource':
-        actionMatches = action === 'collect_resource';
-        break;
-      case 'sell_resources':
-        actionMatches = action === 'sell_resources';
-        break;
-      case 'wait_extraction':
-        // This is handled by the game loop
-        break;
-      default:
-        actionMatches = action === step.action;
-    }
-
-    if (actionMatches) {
-      this.completeStep();
-    }
-  }
-
-  // Complete current step
-  completeStep() {
-    if (!this.isActive) {
-      console.warn('🎓 Tutorial not active, skipping step completion');
-      return;
-    }
-
-    console.log(`🎓 Completing tutorial step ${this.currentStep + 1}`);
-    
-    // Hide current modal completely
+  // Hide tutorial modal
+  hideModal() {
     const modal = document.getElementById('tutorialModal');
     if (modal) {
-      modal.style.display = 'none';
       modal.classList.remove('show');
-      console.log('🎓 Current modal hidden');
-    }
-    
-    // Clear current step highlights and unblock
-    console.log('🎓 Clearing highlights and disabling blocking...');
-    this.clearHighlights();
-    this.disableTutorialBlocking();
-    
-    this.completedSteps.add(this.currentStep);
-    this.currentStep++;
-    
-    console.log(`🎓 Moving to step ${this.currentStep + 1}`);
-    
-    this.game.stateManager.updateState({
-      tutorial: { 
-        ...this.game.getGameState().tutorial,
-        step: this.currentStep 
-      }
-    });
-
-    // Check for extraction completion in tutorial
-    if (this.currentStep === 4) { // Wait for extraction step
-      console.log('🎓 Starting extraction completion check...');
-      this.checkExtractionCompletion();
-      return;
-    }
-
-    if (this.currentStep >= this.tutorialSteps.length) {
-      console.log('🎓 Tutorial complete!');
-      this.completeTutorial();
-    } else {
-      console.log(`🎓 About to show next step (${this.currentStep + 1}) in 200ms...`);
       setTimeout(() => {
-        console.log(`🎓 Now calling showStep for step ${this.currentStep + 1}...`);
-        this.showStep();
-      }, 200); // Much shorter delay for better UX
+        modal.style.display = 'none';
+      }, 300);
     }
   }
 
-  // Check if extraction is complete (for tutorial step 4)
-  checkExtractionCompletion() {
-    const checkInterval = setInterval(() => {
-      const state = this.game.getGameState();
-      const hasReadyCell = state.cells.some(cell => cell.isReady);
-      if (hasReadyCell) {
-        clearInterval(checkInterval);
-        setTimeout(() => {
-          this.showStep();
-        }, 500);
+  // Step-specific highlighting methods
+  highlightBuyTab() {
+    setTimeout(() => {
+      this.applyHighlighting('.tab-btn[data-tab="buy"]');
+    }, 100);
+  }
+
+  highlightBuyButtons() {
+    setTimeout(() => {
+      this.applyHighlighting('.resource-item:not(.disabled)');
+      // Also highlight the tab content container to ensure scrolling works
+      const tabContent = document.getElementById('tabContent');
+      const resourcePanel = document.querySelector('.resource-panel');
+      if (tabContent) {
+        tabContent.classList.add('tutorial-highlight');
       }
-    }, 1000);
+      if (resourcePanel) {
+        resourcePanel.classList.add('tutorial-highlight');
+      }
+    }, 100);
+  }
+
+  highlightInventoryExpeditions() {
+    setTimeout(() => {
+      this.applyHighlighting('.inventory-item.expedition-item');
+    }, 100);
+  }
+
+  highlightOwnedCells() {
+    setTimeout(() => {
+      this.applyHighlighting('.hex-cell.owned');
+    }, 100);
+  }
+
+  highlightReadyCell() {
+    setTimeout(() => {
+      this.applyHighlighting('.hex-cell.ready');
+    }, 100);
+  }
+
+  highlightBoostersTab() {
+    setTimeout(() => {
+      this.applyHighlighting('.tab-btn[data-tab="boosters"]');
+    }, 100);
+  }
+
+  highlightBoosterBuyButtons() {
+    setTimeout(() => {
+      this.applyHighlighting('.booster-item:not(.disabled)');
+    }, 100);
+  }
+
+  highlightSellTab() {
+    setTimeout(() => {
+      this.applyHighlighting('.tab-btn[data-tab="sell"]');
+    }, 100);
+  }
+
+  highlightSellButton() {
+    setTimeout(() => {
+      this.applyHighlighting('.resource-item');
+    }, 100);
+  }
+
+  // Wait for extraction to complete (auto step)
+  waitForExtraction() {
+    console.log('🎓 Starting extraction wait...');
+    
+    this.extractionCheckInterval = setInterval(() => {
+      const state = this.game.stateManager.getState();
+      const hasReadyCell = state.cells.some(cell => cell.isReady);
+      
+      if (hasReadyCell) {
+        console.log('🎓 Extraction completed, progressing to next step');
+        this.handleAction('extraction_complete');
+      }
+    }, 500);
+  }
+
+  // Clear extraction wait interval
+  clearExtractionWait() {
+    if (this.extractionCheckInterval) {
+      clearInterval(this.extractionCheckInterval);
+      this.extractionCheckInterval = null;
+    }
+  }
+
+  // Clear all intervals and timeouts
+  clearAllIntervals() {
+    if (this.stepChangeTimeout) {
+      clearTimeout(this.stepChangeTimeout);
+      this.stepChangeTimeout = null;
+    }
+    
+    if (this.extractionCheckInterval) {
+      clearInterval(this.extractionCheckInterval);
+      this.extractionCheckInterval = null;
+    }
+  }
+
+  // Check for action completion based on state changes
+  checkForActionCompletion(stateChange) {
+    if (!this.isActive) return;
+    
+    const { oldState, newState } = stateChange;
+    
+    // Check for specific state changes that indicate actions
+    
+    // Expedition purchase
+    if (this.hasExpeditionPurchaseOccurred(oldState, newState)) {
+      this.handleAction('purchase_expedition');
+    }
+    
+    // Expedition deployment
+    if (this.hasExpeditionDeploymentOccurred(oldState, newState)) {
+      this.handleAction('deploy_expedition');
+    }
+    
+    // Resource collection
+    if (this.hasResourceCollectionOccurred(oldState, newState)) {
+      this.handleAction('collect_resource');
+    }
+    
+    // Booster purchase
+    if (this.hasBoosterPurchaseOccurred(oldState, newState)) {
+      this.handleAction('purchase_booster');
+    }
+    
+    // Resource sale
+    if (this.hasResourceSaleOccurred(oldState, newState)) {
+      this.handleAction('sell_resource');
+    }
+  }
+
+  // Helper methods to detect state changes
+  hasExpeditionPurchaseOccurred(oldState, newState) {
+    const oldTotal = Object.values(oldState.expeditions || {}).reduce((sum, count) => sum + count, 0);
+    const newTotal = Object.values(newState.expeditions || {}).reduce((sum, count) => sum + count, 0);
+    return newTotal > oldTotal;
+  }
+
+  hasExpeditionDeploymentOccurred(oldState, newState) {
+    const oldExtracting = (oldState.cells || []).filter(cell => cell.extractionStartTime).length;
+    const newExtracting = (newState.cells || []).filter(cell => cell.extractionStartTime).length;
+    return newExtracting > oldExtracting;
+  }
+
+  hasResourceCollectionOccurred(oldState, newState) {
+    const oldTotal = Object.values(oldState.resources || {}).reduce((sum, count) => sum + count, 0);
+    const newTotal = Object.values(newState.resources || {}).reduce((sum, count) => sum + count, 0);
+    return newTotal > oldTotal;
+  }
+
+  hasBoosterPurchaseOccurred(oldState, newState) {
+    const oldTotal = Object.values(oldState.boosters || {}).reduce((sum, count) => sum + count, 0);
+    const newTotal = Object.values(newState.boosters || {}).reduce((sum, count) => sum + count, 0);
+    return newTotal > oldTotal;
+  }
+
+  hasResourceSaleOccurred(oldState, newState) {
+    // Check if resources decreased and points increased
+    const oldResources = Object.values(oldState.resources || {}).reduce((sum, count) => sum + count, 0);
+    const newResources = Object.values(newState.resources || {}).reduce((sum, count) => sum + count, 0);
+    const pointsIncreased = (newState.points || 0) > (oldState.points || 0);
+    
+    return newResources < oldResources && pointsIncreased;
   }
 
   // Complete the entire tutorial
   completeTutorial() {
+    console.log('🎓 completeTutorial() called');
+    
     this.isActive = false;
+    
+    // Immediately and forcefully hide the modal
+    this.forceHideModal();
+    
     this.game.stateManager.updateState({
       tutorial: {
         isActive: false,
@@ -378,9 +673,8 @@ class TutorialSystem {
       xp: this.game.getGameState().xp + 300
     });
     
-    this.disableTutorialBlocking();
-    this.clearHighlights();
-    this.hideTutorialModal();
+    this.disableBlocking();
+    this.clearAllHighlights();
     
     // Award completion achievement and bonus
     if (this.game.achievements) {
@@ -392,10 +686,31 @@ class TutorialSystem {
     console.log('🎓 Tutorial completed successfully!');
   }
 
+  // Force hide modal with multiple methods
+  forceHideModal() {
+    console.log('🎓 forceHideModal() called');
+    
+    const modal = document.getElementById('tutorialModal');
+    if (modal) {
+      // Remove all classes and hide
+      modal.classList.remove('show');
+      modal.style.display = 'none';
+      modal.style.opacity = '0';
+      modal.style.visibility = 'hidden';
+      modal.style.pointerEvents = 'none';
+      
+      // Also try hiding the backdrop
+      modal.style.background = 'transparent';
+      
+      console.log('🎓 Modal forcefully hidden with multiple methods');
+    } else {
+      console.warn('🎓 Tutorial modal element not found');
+    }
+  }
+
   // Skip tutorial
   skipTutorial() {
     if (confirm('Are you sure you want to skip the tutorial? You can restart it later from the debug panel.')) {
-      // Reset tutorial without bonuses instead of completing it
       this.resetTutorial();
       if (this.game.showNotification) {
         this.game.showNotification('Tutorial skipped. You can restart it from the debug panel.', 'info');
@@ -403,96 +718,150 @@ class TutorialSystem {
     }
   }
 
-  // Reset tutorial (for debugging)
+  // Reset tutorial
   resetTutorial() {
     console.log('🎓 Resetting tutorial...');
     
     this.isActive = false;
     this.currentStep = 0;
-    this.completedSteps.clear();
+    this.completedActions.clear();
+    this.clearAllIntervals();
+    this.clearAllHighlights();
+    this.disableBlocking();
+    this.hideModal();
     
-    // Clear all tutorial UI effects
-    this.disableTutorialBlocking();
-    this.clearHighlights();
-    this.hideTutorialModal();
+    // Clear tutorial state
+    this.clearTutorialState();
     
+    // Update game state
     this.game.stateManager.updateState({
       tutorial: {
         isActive: false,
         completed: false,
         step: 0,
         initialSetup: false
-      }
+      },
+      debugSpeed: 1 // Reset game speed
     });
     
     console.log('🎓 Tutorial reset complete');
   }
 
-  // Progress to next tutorial step (combined hide + complete)
-  progressToNextStep() {
-    if (!this.isActive) {
-      console.warn('🎓 Tutorial not active, cannot progress');
-      return;
+  // Save tutorial state to localStorage
+  saveTutorialState() {
+    const tutorialState = {
+      isActive: this.isActive,
+      currentStep: this.currentStep,
+      completedActions: Array.from(this.completedActions),
+      timestamp: Date.now()
+    };
+    
+    try {
+      localStorage.setItem('farpost-tutorial-state', JSON.stringify(tutorialState));
+    } catch (error) {
+      console.warn('Failed to save tutorial state:', error);
     }
+  }
 
-    console.log(`🎓 Progressing from step ${this.currentStep + 1} to next step`);
-    
-    // Immediately hide current modal
-    const modal = document.getElementById('tutorialModal');
-    if (modal) {
-      modal.style.display = 'none';
-      modal.classList.remove('show');
-      console.log('🎓 Modal hidden for transition');
-    }
-    
-    // Clear current step effects
-    this.clearHighlights();
-    this.disableTutorialBlocking();
-    
-    // Progress to next step
-    this.completedSteps.add(this.currentStep);
-    this.currentStep++;
-    
-    // Update game state
-    this.game.stateManager.updateState({
-      tutorial: { 
-        ...this.game.getGameState().tutorial,
-        step: this.currentStep 
+  // Load tutorial state from localStorage
+  loadTutorialState() {
+    try {
+      const saved = localStorage.getItem('farpost-tutorial-state');
+      if (saved) {
+        return JSON.parse(saved);
       }
-    });
-
-    // Show next step or complete tutorial
-    if (this.currentStep >= this.tutorialSteps.length) {
-      console.log('🎓 Tutorial complete!');
-      this.completeTutorial();
-    } else {
-      console.log(`🎓 Showing step ${this.currentStep + 1}...`);
-      this.showStep();
+    } catch (error) {
+      console.warn('Failed to load tutorial state:', error);
     }
+    return null;
+  }
+
+  // Clear tutorial state from localStorage
+  clearTutorialState() {
+    try {
+      localStorage.removeItem('farpost-tutorial-state');
+    } catch (error) {
+      console.warn('Failed to clear tutorial state:', error);
+    }
+  }
+
+  // Check if tutorial should auto-resume
+  shouldAutoResume() {
+    const gameState = this.game.stateManager.getState();
+    const tutorialState = this.loadTutorialState();
+    
+    // Don't resume if tutorial is marked as completed in game state
+    if (gameState.tutorial.completed) {
+      return false;
+    }
+    
+    // Resume if we have valid tutorial state
+    return tutorialState && tutorialState.isActive && tutorialState.currentStep >= 0;
   }
 }
 
 // Global functions for HTML onclick handlers
 window.hideTutorialModal = function() {
   console.log('🎓 Tutorial modal "Got it!" clicked');
-  if (window.game && window.game.tutorial && window.game.tutorial.isActive) {
-    // Call progressToNextStep to properly advance the tutorial
-    window.game.tutorial.progressToNextStep();
+  
+  // Always try to hide the modal first
+  const modal = document.getElementById('tutorialModal');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('show');
+  }
+  
+  if (window.game && window.game.tutorial) {
+    if (window.game.tutorial.isActive) {
+      // Tutorial is active, progress normally
+      console.log('🎓 Tutorial active, progressing to next step');
+      window.game.tutorial.completeCurrentStep();
+    } else {
+      // Tutorial might be completed or in weird state, ensure cleanup
+      console.log('🎓 Tutorial not active, ensuring modal is hidden');
+      window.game.tutorial.forceHideModal();
+      window.game.tutorial.disableBlocking();
+      window.game.tutorial.clearAllHighlights();
+    }
   } else {
-    console.warn('🎓 Tutorial not available or not active');
+    console.warn('🎓 Tutorial not available, hiding modal manually');
+    // Fallback: force hide modal manually
+    if (modal) {
+      modal.style.display = 'none';
+      modal.style.opacity = '0';
+      modal.style.visibility = 'hidden';
+      modal.classList.remove('show');
+    }
+    
+    // Also remove any tutorial blocking
+    const overlay = document.getElementById('tutorialBlockingOverlay');
+    if (overlay) {
+      overlay.classList.remove('active');
+    }
+    
+    document.querySelectorAll('.tutorial-blocked').forEach(element => {
+      element.classList.remove('tutorial-blocked');
+    });
+    
+    document.querySelectorAll('.tutorial-highlight').forEach(element => {
+      element.classList.remove('tutorial-highlight');
+    });
   }
 };
 
 window.skipTutorial = function() {
   console.log('🎓 Skip tutorial clicked');
   if (window.game && window.game.tutorial) {
-    // Ask for confirmation and reset tutorial without bonuses
-    if (confirm('Are you sure you want to skip the tutorial?')) {
-      window.game.tutorial.resetTutorial();
-      if (window.game.showNotification) {
-        window.game.showNotification('Tutorial skipped. You can restart it from the debug panel.', 'info');
-      }
-    }
+    window.game.tutorial.skipTutorial();
+  } else {
+    console.warn('🎓 Tutorial not available');
+  }
+};
+
+window.startTutorial = function() {
+  console.log('🎓 Start tutorial clicked');
+  if (window.game && window.game.tutorial) {
+    window.game.tutorial.startTutorial();
   } else {
     console.warn('🎓 Tutorial not available');
   }
@@ -502,7 +871,6 @@ window.resetTutorial = function() {
   console.log('🎓 Reset tutorial clicked');
   if (window.game && window.game.tutorial) {
     window.game.tutorial.resetTutorial();
-    window.game.showNotification('Tutorial reset! Click the Tutorial button to start again.', 'info');
   } else {
     console.warn('🎓 Tutorial not available');
   }
@@ -514,6 +882,7 @@ window.debugTutorial = function() {
     console.log('🎓 Tutorial Debug Info:');
     console.log('- isActive:', window.game.tutorial.isActive);
     console.log('- currentStep:', window.game.tutorial.currentStep);
+    console.log('- total steps:', window.game.tutorial.tutorialSteps.length);
     console.log('- completedSteps:', Array.from(window.game.tutorial.completedSteps));
     console.log('- Tutorial state:', window.game.getGameState().tutorial);
     
@@ -521,10 +890,49 @@ window.debugTutorial = function() {
     console.log('- Modal element:', modal);
     console.log('- Modal display:', modal ? modal.style.display : 'not found');
     console.log('- Modal classes:', modal ? modal.className : 'not found');
+    console.log('- Modal opacity:', modal ? modal.style.opacity : 'not found');
+    console.log('- Modal visibility:', modal ? modal.style.visibility : 'not found');
+    
+    // Show current step info
+    if (window.game.tutorial.currentStep < window.game.tutorial.tutorialSteps.length) {
+      const currentStepData = window.game.tutorial.tutorialSteps[window.game.tutorial.currentStep];
+      console.log('- Current step data:', currentStepData);
+    } else {
+      console.log('- Current step: BEYOND TUTORIAL (should be completed)');
+    }
   } else {
     console.warn('🎓 Tutorial not available');
   }
 };
 
-// Export for global access
-window.TutorialSystem = TutorialSystem; 
+// Debug function to force close tutorial modal
+window.debugCloseTutorial = function() {
+  console.log('🎓 Force closing tutorial modal...');
+  
+  const modal = document.getElementById('tutorialModal');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.style.opacity = '0';
+    modal.style.visibility = 'hidden';
+    modal.style.pointerEvents = 'none';
+    modal.classList.remove('show');
+    console.log('🎓 Modal force closed');
+  }
+  
+  // Also clean up tutorial state
+  if (window.game && window.game.tutorial) {
+    window.game.tutorial.isActive = false;
+    window.game.tutorial.disableBlocking();
+    window.game.tutorial.clearAllHighlights();
+    console.log('🎓 Tutorial state cleaned up');
+  }
+  
+  alert('Tutorial modal force closed. Check console for details.');
+};
+
+// Export TutorialSystem to global scope
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = TutorialSystem;
+  } else {
+  window.TutorialSystem = TutorialSystem;
+  }

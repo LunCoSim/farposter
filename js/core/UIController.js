@@ -537,6 +537,21 @@ class UIController {
     
     // Update tab content to match the new active tab
     this.updateTabContent();
+    
+    // Emit tutorial events if tutorial is active
+    if (window.game && window.game.tutorial && window.game.tutorial.isActive) {
+      switch (tabName) {
+        case 'boosters':
+          window.game.tutorial.handleAction('switch_to_boosters');
+          break;
+        case 'sell':
+          window.game.tutorial.handleAction('switch_to_sell');
+          break;
+        case 'buy':
+          window.game.tutorial.handleAction('switch_to_buy');
+          break;
+      }
+    }
   }
 
   // Purchase expedition
@@ -544,6 +559,11 @@ class UIController {
     try {
       this.stateManager.purchaseExpedition(resourceType);
       this.showNotification(`Purchased ${resourceType} expedition!`, 'success');
+      
+      // Emit tutorial event if tutorial is active
+      if (window.game && window.game.tutorial && window.game.tutorial.isActive) {
+        window.game.tutorial.handleAction('purchase_expedition', { resourceType });
+      }
     } catch (error) {
       this.showNotification(error.message, 'error');
     }
@@ -554,6 +574,11 @@ class UIController {
     try {
       this.stateManager.purchaseBooster(boosterType);
       this.showNotification(`Purchased ${boosterType}!`, 'success');
+      
+      // Emit tutorial event if tutorial is active
+      if (window.game && window.game.tutorial && window.game.tutorial.isActive) {
+        window.game.tutorial.handleAction('purchase_booster', { boosterType });
+      }
     } catch (error) {
       this.showNotification(error.message, 'error');
     }
@@ -582,6 +607,11 @@ class UIController {
       });
       const count = state.expeditions[resourceType];
       this.showNotification(`Selected ${resourceType} expedition (${count} available). Click cells to deploy continuously!`, 'success');
+      
+      // Emit tutorial event if tutorial is active
+      if (window.game && window.game.tutorial && window.game.tutorial.isActive) {
+        window.game.tutorial.handleAction('select_expedition', { resourceType });
+      }
     }
   }
 
@@ -754,6 +784,11 @@ class UIController {
     try {
       const result = this.resourceManager.sellResources(resourceType);
       this.showNotification(`Sold ${result.amount} ${resourceType} for ${result.pointsGained} points! (+${result.xpGained} XP)`, 'success');
+      
+      // Emit tutorial event if tutorial is active
+      if (window.game && window.game.tutorial && window.game.tutorial.isActive) {
+        window.game.tutorial.handleAction('sell_resource', { resourceType, result });
+      }
     } catch (error) {
       this.showNotification(error.message, 'error');
     }

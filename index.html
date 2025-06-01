@@ -708,14 +708,22 @@
         .tutorial-highlight::after {
             display: none !important;
         }
-
-        /* Tutorial allowed elements */
-        .tutorial-allowed {
+        
+        /* Ensure highlighted elements and their children are fully interactive */
+        .tutorial-highlight,
+        .tutorial-highlight * {
             pointer-events: all !important;
             opacity: 1 !important;
             filter: none !important;
-            z-index: 1000 !important;
-            transition: all 0.3s ease-in-out !important;
+            cursor: auto !important;
+        }
+        
+        /* Special handling for scrollable areas within highlighted elements */
+        .tutorial-highlight .resource-panel,
+        .tutorial-highlight .booster-panel,
+        .tutorial-highlight #tabContent {
+            overflow: auto !important;
+            pointer-events: all !important;
         }
 
         /* Timer overlay */
@@ -1711,21 +1719,10 @@
         
         window.startTutorial = () => {
             if (game && game.tutorial) {
-                // Reset tutorial first, then start it
-                game.tutorial.resetTutorial();
-                setTimeout(() => {
-                    game.tutorial.startTutorial();
-                }, 100);
+                game.tutorial.startTutorial();
             } else {
                 console.warn('Tutorial not available - game not initialized yet');
-                // Try again after a short delay
-                setTimeout(() => {
-                    if (game && game.tutorial) {
-                        window.startTutorial();
-                    } else {
-                        alert('Tutorial system is not ready yet. Please refresh the page and try again.');
-                    }
-                }, 1000);
+                alert('Tutorial system is not ready yet. Please refresh the page and try again.');
             }
         };
         
@@ -1759,13 +1756,7 @@
         
         window.skipTutorial = () => {
             if (game && game.tutorial) {
-                // Call the reset method instead of the class method to avoid bonuses
-                if (confirm('Are you sure you want to skip the tutorial?')) {
-                    game.tutorial.resetTutorial();
-                    if (game.showNotification) {
-                        game.showNotification('Tutorial skipped. You can restart it from the debug panel.', 'info');
-                    }
-                }
+                game.tutorial.skipTutorial();
             } else {
                 console.warn('Skip tutorial not available - game not initialized');
             }
@@ -1773,8 +1764,7 @@
         
         window.hideTutorialModal = () => {
             if (game && game.tutorial && game.tutorial.isActive) {
-                // Call progressToNextStep to properly advance the tutorial
-                game.tutorial.progressToNextStep();
+                game.tutorial.completeCurrentStep();
             } else {
                 console.warn('Tutorial modal close not available - tutorial not active or game not initialized');
             }

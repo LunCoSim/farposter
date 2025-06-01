@@ -96,26 +96,34 @@ class GameEngine {
     // Initialize tutorial system
     if (window.TutorialSystem) {
       this.tutorial = new TutorialSystem(this);
+      
+      // Check if tutorial should auto-resume after page reload
+      if (this.tutorial.shouldAutoResume()) {
+        console.log('🎓 Auto-resuming tutorial from saved state');
+        setTimeout(() => {
+          this.tutorial.resumeTutorial();
+        }, 1000);
+      } else {
+        // Check if tutorial should start for new players
+        const state = this.stateManager.getState();
+        if (!state.tutorial.completed && !state.tutorial.initialSetup) {
+          this.stateManager.updateState({
+            tutorial: { ...state.tutorial, initialSetup: true }
+          });
+          
+          setTimeout(() => {
+            if (this.tutorial) {
+              this.tutorial.startTutorial();
+            }
+          }, 2000);
+        }
+      }
     }
     
     // Initialize achievement system
     if (window.AchievementSystem) {
       this.achievements = new AchievementSystem(this);
       this.achievements.initializeStats();
-    }
-    
-    // Check if tutorial should start
-    const state = this.stateManager.getState();
-    if (!state.tutorial.completed && !state.tutorial.initialSetup) {
-      this.stateManager.updateState({
-        tutorial: { ...state.tutorial, initialSetup: true }
-      });
-      
-      setTimeout(() => {
-        if (this.tutorial) {
-          this.tutorial.startTutorial();
-        }
-      }, 2000);
     }
   }
 
@@ -373,15 +381,10 @@ class GameEngine {
     return this.config;
   }
 
-  // Purchase expedition
+  // Purchase expedition (public API)
   purchaseExpedition(resourceType) {
     const result = this.stateManager.purchaseExpedition(resourceType);
     if (result.success) {
-      // Track tutorial action
-      if (this.tutorial) {
-        this.tutorial.checkAction('purchase_expedition', { resourceType });
-      }
-      
       this.uiController.updateUI();
       this.showNotification(`Purchased ${resourceType} expedition!`, 'success');
       this.resourceManager.processStateChange();
@@ -413,16 +416,16 @@ class GameEngine {
   deployExpedition(cellIndex, resourceType = null) {
     const result = this.resourceManager.deployExpedition(cellIndex, resourceType);
     if (result.success) {
-      // Track tutorial action
-      if (this.tutorial) {
-        this.tutorial.checkAction('deploy_expedition', { cellIndex, resourceType });
-      }
-      
       this.uiController.updateUI();
       this.showNotification(`Expedition deployed to cell ${cellIndex + 1}!`, 'success');
       
       // Emit event for achievements
       this.stateManager.emit('expeditionDeployed', { cellIndex, resourceType });
+      
+      // Emit tutorial event if tutorial is active
+      if (this.tutorial && this.tutorial.isActive) {
+        this.tutorial.handleAction('deploy_expedition', { cellIndex, resourceType });
+      }
     } else {
       this.showNotification(result.error, 'error');
     }
@@ -433,16 +436,16 @@ class GameEngine {
   collectResource(cellIndex) {
     const result = this.resourceManager.collectResource(cellIndex);
     if (result.success) {
-      // Track tutorial action
-      if (this.tutorial) {
-        this.tutorial.checkAction('collect_resource', { cellIndex });
-      }
-      
       this.uiController.updateUI();
       this.showNotification(`Collected ${result.resourceType}!`, 'success');
       
       // Emit event for achievements
       this.stateManager.emit('resourceCollected', { cellIndex, resourceType: result.resourceType });
+      
+      // Emit tutorial event if tutorial is active
+      if (this.tutorial && this.tutorial.isActive) {
+        this.tutorial.handleAction('collect_resource', { cellIndex, resourceType: result.resourceType });
+      }
     } else {
       this.showNotification(result.error, 'error');
     }
@@ -470,11 +473,6 @@ class GameEngine {
   sellResources(resourceType, amount = null) {
     const result = this.resourceManager.sellResources(resourceType, amount);
     if (result.success) {
-      // Track tutorial action
-      if (this.tutorial) {
-        this.tutorial.checkAction('sell_resources', { resourceType, amount });
-      }
-      
       this.uiController.updateUI();
       const message = resourceType === 'all' 
         ? `Sold all resources for ${result.pointsGained} points!`
