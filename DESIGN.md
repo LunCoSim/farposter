@@ -386,7 +386,7 @@ tutorial: {
 
 #### Completion Rewards:
 - **Points Bonus**: +200 points
-- **XP Bonus**: +300 XP
+- **XP Bonus**: +100 XP
 - **Achievement**: "Graduate" achievement unlocked
 - **System Reset**: Game speed returns to normal (1x)
 - **Unlock All Expeditions**: All expedition types become available for purchase

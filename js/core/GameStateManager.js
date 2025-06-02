@@ -170,6 +170,12 @@ class GameStateManager {
     }
     
     this.state = { ...this.state, ...updates };
+    
+    // Check for level up if XP was updated
+    if (updates.xp !== undefined) {
+      this.checkLevelUp();
+    }
+    
     this.emit('stateChange', { oldState, newState: this.getState() });
   }
 

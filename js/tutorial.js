@@ -735,7 +735,7 @@ class TutorialSystem {
         initialSetup: true
       },
       points: this.game.getGameState().points + 200,
-      xp: this.game.getGameState().xp + 300
+      xp: this.game.getGameState().xp + 100
     });
     
     this.disableBlocking();
@@ -746,7 +746,7 @@ class TutorialSystem {
       this.game.achievements.trackAction('tutorial_complete');
     }
     
-    this.game.showNotification('🎓 Tutorial completed! You earned 200 points and 300 XP!', 'success');
+    this.game.showNotification('🎓 Tutorial completed! You earned 200 points and 100 XP!', 'success');
     
     console.log('🎓 Tutorial completed successfully!');
   }
